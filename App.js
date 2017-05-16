@@ -1,22 +1,34 @@
 import React, { Component } from 'react';
-import { ActivityIndicator, ListView, Text, View } from 'react-native';
+import { ActivityIndicator, Button, Picker, Text, View, Alert } from 'react-native';
 
 export default class FastGo extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      isLoading: true
+      isLoading: true,
+      selectedMode: 'cy_bic',
+      modes: [],
+      message: 'Selected Mode: ' + 'cy_bic'
     }
   }
 
   componentDidMount() {
-    return fetch('https://bigbang.skedgo.com/satapp-beta/regions.json?v=2')
+    return fetch('https://bigbang.skedgo.com/satapp-beta/regions.json', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+        },
+        body: JSON.stringify({
+          v: '2',
+        })
+      })
       .then((response) => response.json())
       .then((regionsJSON) => {
-        let ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.setState({
           isLoading: false,
-          dataSource: ds.cloneWithRows(getModes(regionsJSON, "AU_NSW_Sydney")),
+          modes: getModes(regionsJSON, "AU_NSW_Sydney"),
         }, function() {
           // do something with new state
         });
@@ -25,7 +37,6 @@ export default class FastGo extends Component {
         console.error(error);
       });
   }
-
 
   render() {
     if (this.state.isLoading) {
@@ -36,16 +47,63 @@ export default class FastGo extends Component {
       );
     }
 
+    let onButtonPress = () => {
+      this.setState({message: 'Selected Mode: ' + this.state.selectedMode})
+      data = {
+        fromLoc: '(-33.894436,151.110030)',
+        toLoc: '(-33.877294,151.208554)',
+        mode: this.state.selectedMode,
+        wp: '(1,1,1,1)' 
+      }
+      let url = 'https://bigbang.skedgo.com/satapp-beta/routing.json'+ 
+                `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=11`
+      return fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+          }
+        })
+        .then((response) => response.json())
+        .then((routingJSON) => {
+          console.log(routingJSON);
+          this.setState({
+              message: 'Computed Trips: ' + routingJSON.segmentTemplates[0].action 
+          }, function() {
+            
+          });
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    };
+
+
+    let serviceItems = this.state.modes.map( (s, i) => {
+        return <Picker.Item key={i} value={s.mode} label={s.title} />
+    });
+
     return (
       <View style={{flex: 1, paddingTop: 20}}>
-        <ListView
-          dataSource={this.state.dataSource}
-          renderRow={(rowData) => <Text>{rowData.title} - {rowData.mode}</Text>}
+        <Picker
+          selectedValue={this.state.selectedMode}
+          onValueChange={(mode) => this.setState({selectedMode: mode})}>
+          {serviceItems}
+        </Picker>
+        <Button
+            onPress={onButtonPress}
+            title="FastGo!"
+            accessibilityLabel="The fastest trip!"
         />
+        <Text>
+          {this.state.message}
+        </Text>
       </View>
     );
   }
 }
+
 
 function getModes(regionsJSON, regionName) {
   let modes = regionsJSON.modes;
@@ -58,5 +116,6 @@ function getModes(regionsJSON, regionName) {
       });
     }
   });
+  // console.log(result);
   return result;
 }
