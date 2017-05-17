@@ -1,13 +1,14 @@
 import React, { Component } from 'react';
 import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import MapView from 'react-native-maps';
+import polyline from 'polyline';
 
 export default class FastGo extends Component {
   constructor(props) {
     super(props);
     this.state = {
       isLoading: true,
-      selectedMode: 'cy_bic',
+      selectedMode: 'pt_pub',
       currentPosition: null,
       modes: [],
       selectedPlaces: 'starbucks',
@@ -24,6 +25,7 @@ export default class FastGo extends Component {
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       },
+      polylines: [],
     }
   }
 
@@ -31,8 +33,8 @@ export default class FastGo extends Component {
   componentDidMount() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // var currentPosition = {'lat': -33.6755296,"lng": 151.3066007};
-          var currentPosition = {'lat': position.coords.latitude, 'lng': position.coords.longitude};
+          var currentPosition = {'lat': -33.6755296,"lng": 151.3066007};
+          // var currentPosition = {'lat': position.coords.latitude, 'lng': position.coords.longitude};
           position.coords.latitudeDelta = 0.02;
           position.coords.longitudeDelta = 0.02;
           this.setState({currentPosition, 'region': position.coords});
@@ -81,9 +83,9 @@ export default class FastGo extends Component {
                 message: 'Error: ' + routingJSON.error 
             })
           } else {
-            draw(fastestTrip)
             this.setState({
-                message: 'Computed Trips: ' + fastestTrip.routingJSON.segmentTemplates[0].action 
+                message: 'Computed Trips: ' + fastestTrip.routingJSON.segmentTemplates[0].action,
+                polylines: draw(fastestTrip) 
             })
           }
         })
@@ -109,7 +111,15 @@ export default class FastGo extends Component {
             pitchEnabled={true}
             rotateEnabled={true}
             region={this.state.region}
+        >
+          <MapView.Polyline
+            key="polyline"
+            coordinates={this.state.polylines}
+            strokeColor="#000"
+            fillColor="rgba(255,255,255,0.5)"
+            strokeWidth={5}
           />
+        </MapView>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             onPress={onButtonPress}
@@ -302,6 +312,25 @@ function getSelectedTrip(faster) {
 function draw(faster) {
   let trip = getSelectedTrip(faster);
   log(trip);
+  result = new Array();
+  trip.segments.map(segment => {
+    result.push({'latitude': segment.from.lat, 'longitude': segment.from.lng});
+    waypoints = segment.hasOwnProperty('streets') ? segment.streets : segment.shapes;
+    waypoints.map(waypoint => {
+      if (waypoint.hasOwnProperty('travelled') && !waypoint.travelled)
+        return;
+      let steps = polyline.decode(waypoint.encodedWaypoints);
+      for (let i=0; i < steps.length; i++) {
+        let tempLocation = {
+          latitude : steps[i][0],
+          longitude : steps[i][1]
+        }
+        result.push(tempLocation);
+      }
+    })
+    result.push({'latitude': segment.to.lat, 'longitude': segment.to.lng});
+  })
+  return result;
 }
 
 function log(message) {
