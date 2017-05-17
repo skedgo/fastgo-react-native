@@ -13,10 +13,10 @@ export default class FastGo extends Component {
       modes: [],
       selectedPlaces: 'starbucks',
       places: {
-        'mcdonalds' : [{"lat": -33.8755296,"lng": 151.2066007, "address": "600 George St"},
-                       {"lat": -33.8730211,"lng": 151.2083184, "address": "Park St & Pitt St"}],
-        'starbucks' : [{"lat": -33.8734138,"lng": 151.209559, "address": "Pacific Power Building, 201 Elizabeth St"},
-                       {"lat": -33.8723705,"lng": 151.2065248, "address": "Queen Victoria Building, 69/455 George St"}],
+        'mcdonalds' : [{"latitude": -33.8755296,"longitude": 151.2066007, "address": "600 George St"},
+                       {"latitude": -33.8730211,"longitude": 151.2083184, "address": "Park St & Pitt St"}],
+        'starbucks' : [{"latitude": -33.8734138,"longitude": 151.209559, "address": "Pacific Power Building, 201 Elizabeth St"},
+                       {"latitude": -33.8723705,"longitude": 151.2065248, "address": "Queen Victoria Building, 69/455 George St"}],
       },
       message: 'Selected Mode: ' + 'cy_bic',
       region: {
@@ -33,8 +33,8 @@ export default class FastGo extends Component {
   componentDidMount() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          var currentPosition = {'lat': -33.6755296,"lng": 151.3066007};
-          // var currentPosition = {'lat': position.coords.latitude, 'lng': position.coords.longitude};
+          var currentPosition = {'latitude': -33.8595296,"longitude": 151.2086007};
+          // var currentPosition = position.coords;
           position.coords.latitudeDelta = 0.02;
           position.coords.longitudeDelta = 0.02;
           this.setState({currentPosition, 'region': position.coords});
@@ -112,6 +112,20 @@ export default class FastGo extends Component {
             rotateEnabled={true}
             region={this.state.region}
         >
+          {this.state.currentPosition !== null && 
+            <MapView.Marker
+              title='You are here'
+              key='current'
+              coordinate={this.state.currentPosition}
+            />
+          }
+          {this.state.places[this.state.selectedPlaces].map(place => (
+            <MapView.Marker
+              title={place.address}
+              key={place.address}
+              coordinate={place}
+            />
+          ))}
           <MapView.Polyline
             key="polyline"
             coordinates={this.state.polylines}
@@ -251,8 +265,8 @@ function getFirstArrive(routingJSON, now) {
 
 function computeTrip(selectedMode, fromLoc, toLoc) {
   data = {
-    fromLoc: `(${fromLoc.lat},${fromLoc.lng})`,
-    toLoc: `(${toLoc.lat},${toLoc.lng})`,
+    fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
+    toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
     mode: selectedMode,
     wp: '(1,1,1,1)' 
   }
@@ -314,7 +328,7 @@ function draw(faster) {
   log(trip);
   result = new Array();
   trip.segments.map(segment => {
-    result.push({'latitude': segment.from.lat, 'longitude': segment.from.lng});
+    result.push({'latitude':segment.from.lat, 'longitude':segment.from.lng});
     waypoints = segment.hasOwnProperty('streets') ? segment.streets : segment.shapes;
     waypoints.map(waypoint => {
       if (waypoint.hasOwnProperty('travelled') && !waypoint.travelled)
@@ -328,13 +342,13 @@ function draw(faster) {
         result.push(tempLocation);
       }
     })
-    result.push({'latitude': segment.to.lat, 'longitude': segment.to.lng});
+    result.push({'latitude':segment.to.lat, 'longitude':segment.to.lng});
   })
   return result;
 }
 
 function log(message) {
-  console.log(message)
+  // console.log(message)
 }
 
 function forEachTrip(routingJSON, callback) {
