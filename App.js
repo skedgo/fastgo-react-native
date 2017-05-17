@@ -47,18 +47,13 @@ export default class FastGo extends Component {
       this.setState({message: 'Selected Mode: ' + this.state.selectedMode + 'Selected Place: ' + this.state.selectedPlaces})
         return computeFastestTrip(this.state.selectedMode, this.state.places[this.state.selectedPlaces])
         .then((routingJSON) => {
-          // console.log(routingJSON);
           if (routingJSON.hasOwnProperty('error')) {
             this.setState({
                 message: 'Error: ' + routingJSON.error 
-            }, function() {
-              
             })
           } else {
             this.setState({
                 message: 'Computed Trips: ' + routingJSON.segmentTemplates[0].action 
-            }, function() {
-              
             })
           }
         })
@@ -130,7 +125,7 @@ function computeFastestTrip(selectedMode, selectedPlaces) {
       if (faster == null || arrive > newArrive) {
         faster = routingJSON
         arrive = newArrive;
-        console.log("new faster one: " + newArrive)
+        log("new faster one: " + newArrive)
       }
     })
     return faster;
@@ -142,11 +137,11 @@ function getFirstArrive(routingJSON, now) {
   routingJSON.groups.map((group => {
     group.trips.map((trip => {
       if (trip.depart <= now) {
-        console.log('found one in the past')
+        log('found one in the past')
         return;
       }
       if (arrive === null || arrive > trip.arrive) {
-        console.log('found a faster: ' + trip.arrive)
+        log('found a faster: ' + trip.arrive)
         arrive = trip.arrive;
       }
     }))
@@ -163,7 +158,7 @@ function computeTrip(selectedMode, fromLat, fromLng) {
   }
   let url = 'https://bigbang.skedgo.com/satapp-beta/routing.json'+ 
             `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=11`
-  console.log(url)
+  log(url)
   return fetch(url, {
       method: 'GET',
       headers: {
@@ -181,11 +176,15 @@ function getModes(regionsJSON, regionName) {
   regionsJSON.regions.map(region => {
     if (region.name.localeCompare(regionName) != 0) 
       return;
-    
+
     region.modes.map(mode => {
       modes[mode].mode = mode;
       result.push(modes[mode]);
     });
   })  
   return result;
+}
+
+function log(message) {
+  // console.log(message)
 }
