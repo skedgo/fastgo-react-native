@@ -18,7 +18,7 @@ export default class FastGo extends Component {
         'starbucks' : [{"latitude": -33.8734138,"longitude": 151.209559, "address": "Pacific Power Building, 201 Elizabeth St"},
                        {"latitude": -33.8723705,"longitude": 151.2065248, "address": "Queen Victoria Building, 69/455 George St"}],
       },
-      message: 'Selected Mode: ' + 'cy_bic',
+      message: null,
       region: {
         latitude: -33.8755296,
         longitude: 151.2066007,
@@ -26,6 +26,8 @@ export default class FastGo extends Component {
         longitudeDelta: 0.0421,
       },
       polylines: [],
+      showModeSelector: false,
+      showPlaceSelector: false,
     }
   }
 
@@ -37,7 +39,8 @@ export default class FastGo extends Component {
           // var currentPosition = position.coords;
           position.coords.latitudeDelta = 0.02;
           position.coords.longitudeDelta = 0.02;
-          this.setState({currentPosition, 'region': position.coords});
+          this.setState({currentPosition});
+          // this.setState({currentPosition, 'region': position.coords});
         },
         (error) => alert(JSON.stringify(error)),
         {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000}
@@ -72,8 +75,17 @@ export default class FastGo extends Component {
       );
     }
 
-    let onButtonPress = () => {
-      this.setState({message: 'Selected Mode: ' + this.state.selectedMode + 'Selected Place: ' + this.state.selectedPlaces})
+    let onModePress = () => {
+      this.setState({'showModeSelector': !this.state.showModeSelector, 
+                     'showPlaceSelector': false })
+    }
+    let onPlacesPress = () => {
+      this.setState({'showPlaceSelector': !this.state.showPlaceSelector,
+                      'showModeSelector': false})
+    }
+    
+    let onGoPress = () => {
+      this.setState({'showPlaceSelector': false,'showModeSelector': false, message: 'Computing Trips... '})
         return computeFastestTrip(this.state.selectedMode, 
                                   this.state.places[this.state.selectedPlaces],
                                   this.state.currentPosition)
@@ -136,29 +148,49 @@ export default class FastGo extends Component {
         </MapView>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            onPress={onButtonPress}
+            onPress={onModePress}
             style={[styles.bubble, styles.button]}
           >
             <Text>{this.state.selectedMode}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={onButtonPress}
+            onPress={onPlacesPress}
             style={[styles.bubble, styles.button]}
           >
             <Text>{this.state.selectedPlaces}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={onButtonPress}
+            onPress={onGoPress}
             style={[styles.bubble, styles.button]}
           >
             <Text>FastGo!</Text>
           </TouchableOpacity>
         </View>
-        <View style={[styles.bubble, styles.message]}>
-          <Text style={{ textAlign: 'center' }}>
-            {this.state.message}
-          </Text>
-        </View>
+        {this.state.message !== null && 
+          <View style={[styles.bubble, styles.message]}>
+            <Text style={{ textAlign: 'center' }}>
+              {this.state.message}
+            </Text>
+          </View>
+        }
+        {this.state.showModeSelector && 
+          <Picker
+            style={styles.selector}
+            selectedValue={this.state.selectedMode}
+            onValueChange={(mode) => this.setState({selectedMode: mode})}>
+            {modesItems}
+          </Picker>
+        }
+        {this.state.showPlaceSelector && 
+          <Picker
+            style={styles.selector}
+            selectedValue={this.state.selectedPlaces}
+            onValueChange={(place) => this.setState({selectedPlaces: place})}>
+            {placesItems}
+          </Picker>
+        }
+
+
       </View>
     );
   }
@@ -187,7 +219,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   button: {
-    width: 80,
+    width: 100,
     paddingHorizontal: 12,
     alignItems: 'center',
     marginHorizontal: 10,
@@ -198,9 +230,14 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   message: {
-    width: 200,
+    width: SCREEN_WIDTH,
     alignItems: 'stretch',
+    marginTop: 'auto',
   },
+  selector: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    marginTop: 'auto',
+  }
 });
 
 function getRegions() {
@@ -230,6 +267,10 @@ function computeFastestTrip(selectedMode, selectedPlaces, currentPosition) {
     routingJSONs.map((routingJSON, i) => {
       if (routingJSON.hasOwnProperty('error')) {
         faster = routingJSON
+        return
+      }
+
+      if (!routingJSON.hasOwnProperty('groups')) {
         return
       }
 
@@ -328,6 +369,10 @@ function draw(faster) {
   log(trip);
   result = new Array();
   trip.segments.map(segment => {
+    if (segment.hasOwnProperty('location')) {
+      result.push({'latitude':segment.location.lat, 'longitude':segment.location.lng});
+      return;
+    }
     result.push({'latitude':segment.from.lat, 'longitude':segment.from.lng});
     waypoints = segment.hasOwnProperty('streets') ? segment.streets : segment.shapes;
     waypoints.map(waypoint => {
@@ -348,7 +393,7 @@ function draw(faster) {
 }
 
 function log(message) {
-  // console.log(message)
+  console.log(message)
 }
 
 function forEachTrip(routingJSON, callback) {
@@ -358,27 +403,3 @@ function forEachTrip(routingJSON, callback) {
     })
   });
 }
-
-/*
-        <Picker
-          selectedValue={this.state.selectedMode}
-          onValueChange={(mode) => this.setState({selectedMode: mode})}>
-          {modesItems}
-        </Picker>
-        <Picker
-          selectedValue={this.state.selectedPlaces}
-          onValueChange={(place) => this.setState({selectedPlaces: place})}>
-          {placesItems}
-        </Picker>
-        <Text>
-          {this.state.message}
-        </Text>
-
-        <Button
-            style={styles.button}
-            onPress={onButtonPress}
-            title="FastGo!"
-            accessibilityLabel="The fastest trip!"
-        />
-
-*/
