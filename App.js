@@ -77,11 +77,13 @@ export default class FastGo extends Component {
 
     let onModePress = () => {
       this.setState({'showModeSelector': !this.state.showModeSelector, 
-                     'showPlaceSelector': false })
+                     'showPlaceSelector': false,
+                     'message': null })
     }
     let onPlacesPress = () => {
       this.setState({'showPlaceSelector': !this.state.showPlaceSelector,
-                      'showModeSelector': false})
+                      'showModeSelector': false,
+                      'message': null })
     }
     
     let onGoPress = () => {
