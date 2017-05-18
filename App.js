@@ -3,20 +3,21 @@ import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, Style
 import MapView from 'react-native-maps';
 import polyline from 'polyline';
 
+const baseAPIurl = "https://bigbang.skedgo.com/satapp-beta/";
+
 export default class FastGo extends Component {
   constructor(props) {
     super(props);
     this.state = {
       isLoading: true,
-      selectedMode: 'pt_pub',
-      currentPosition: null,
+      selectedMode: 'me_car',
+      currentPosition: {'latitude': -33.8755296,"longitude": 151.2066007},
       modes: [],
-      selectedPlaces: 'starbucks',
+      baseURLs: [],
+      selectedPlaces: 'mcdonalds',
       places: {
-        'mcdonalds' : [{"latitude": -33.8755296,"longitude": 151.2066007, "address": "600 George St"},
-                       {"latitude": -33.8730211,"longitude": 151.2083184, "address": "Park St & Pitt St"}],
-        'starbucks' : [{"latitude": -33.8734138,"longitude": 151.209559, "address": "Pacific Power Building, 201 Elizabeth St"},
-                       {"latitude": -33.8723705,"longitude": 151.2065248, "address": "Queen Victoria Building, 69/455 George St"}],
+        'mcdonalds' : [],
+        'starbucks' : [],
       },
       message: null,
       region: {
@@ -35,7 +36,7 @@ export default class FastGo extends Component {
   componentDidMount() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          var currentPosition = {'latitude': -33.8595296,"longitude": 151.2086007};
+          var currentPosition = {'latitude': -33.8755296,"longitude": 151.2066007};
           // var currentPosition = position.coords;
           position.coords.latitudeDelta = 0.02;
           position.coords.longitudeDelta = 0.02;
@@ -45,11 +46,15 @@ export default class FastGo extends Component {
         (error) => alert(JSON.stringify(error)),
         {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000}
       );
+      places = getLocations(this.state.currentPosition, Object.keys(this.state.places));
+      this.setState({places});
+      log(this.state.places)
       return getRegions()
       .then((regionsJSON) => {
         this.setState({
           isLoading: false,
           modes: getModes(regionsJSON, "AU_NSW_Sydney"),
+          baseURLs: getURLs(regionsJSON, "AU_NSW_Sydney"),
         }, function() {
           // do something with new state
         });
@@ -88,13 +93,14 @@ export default class FastGo extends Component {
     
     let onGoPress = () => {
       this.setState({'showPlaceSelector': false,'showModeSelector': false, message: 'Computing Trips... '})
-        return computeFastestTrip(this.state.selectedMode, 
+        return computeFastestTrip(this.state.baseURLs,
+                                  this.state.selectedMode, 
                                   this.state.places[this.state.selectedPlaces],
                                   this.state.currentPosition)
         .then((fastestTrip) => {
-          if (fastestTrip.routingJSON.hasOwnProperty('error')) {
+          if (fastestTrip.routingJSON === null) {
             this.setState({
-                message: 'Error: ' + routingJSON.error 
+                message: 'Error: ' + fastestTrip.error.error 
             })
           } else {
             this.setState({
@@ -136,7 +142,7 @@ export default class FastGo extends Component {
           {this.state.places[this.state.selectedPlaces].map(place => (
             <MapView.Marker
               title={place.address}
-              key={place.address}
+              key={place.key}
               coordinate={place}
             />
           ))}
@@ -191,8 +197,6 @@ export default class FastGo extends Component {
             {placesItems}
           </Picker>
         }
-
-
       </View>
     );
   }
@@ -242,8 +246,30 @@ const styles = StyleSheet.create({
   }
 });
 
+function getLocations(near, keywords) {
+  let promises = new Array();
+  let result = {};
+  keywords.map(keyword => {
+    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=restaurant&keyword=${keyword}&key=AIzaSyCLCOtDsWaH9KSrc5Sees7T11n0k12wtL0`)
+      .then(response => response.json())
+      .then(response => {
+        let places = new Array();
+        response.results.map(place => {
+          places.push({'latitude':place.geometry.location.lat, 
+                       'longitude':place.geometry.location.lng,
+                       'address':place.name,
+                       'key':place.place_id})
+        })
+        result[keyword] = places;
+      });
+    promises.push(promise)
+  })
+  Promise.all(promises);
+  return result;
+}
+
 function getRegions() {
-  return fetch('https://bigbang.skedgo.com/satapp-beta/regions.json', {
+  return fetch(baseAPIurl + 'regions.json', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
@@ -257,18 +283,19 @@ function getRegions() {
           .then((response) => response.json());
 }
 
-function computeFastestTrip(selectedMode, selectedPlaces, currentPosition) {
+function computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosition) {
   let promises = [];
   let now = (Date.now() / 1000) - 10
   selectedPlaces.map((place, i) => {
-    promises.push(computeTrip(selectedMode, currentPosition, place));
+    promises.push(computeTrip(baseURLs[0], selectedMode, currentPosition, place));
   });
   return Promise.all(promises).then((routingJSONs => {
+    let error = null;
     let faster = null;
     let arrive = null;
     routingJSONs.map((routingJSON, i) => {
       if (routingJSON.hasOwnProperty('error')) {
-        faster = routingJSON
+        error = routingJSON
         return
       }
 
@@ -283,7 +310,7 @@ function computeFastestTrip(selectedMode, selectedPlaces, currentPosition) {
         log("new faster one: " + JSON.stringify(newArrive))
       }
     })
-    return {'routingJSON': faster, 'temporaryURL': arrive.temporaryURL};
+    return {'routingJSON': faster, 'temporaryURL': arrive.temporaryURL, error};
   }))
 }
 
@@ -306,14 +333,14 @@ function getFirstArrive(routingJSON, now) {
   return result;
 }
 
-function computeTrip(selectedMode, fromLoc, toLoc) {
+function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
   data = {
     fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
     toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
     mode: selectedMode,
     wp: '(1,1,1,1)' 
   }
-  let url = 'https://bigbang.skedgo.com/satapp-beta/routing.json'+ 
+  let url = baseUrl + '/routing.json'+ 
             `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=11`
   log(url)
   return fetch(url, {
@@ -338,6 +365,18 @@ function getModes(regionsJSON, regionName) {
       modes[mode].mode = mode;
       result.push(modes[mode]);
     });
+  })  
+  return result;
+}
+
+function getURLs(regionsJSON, regionName) {
+  let modes = regionsJSON.modes;
+  var result = null;
+  regionsJSON.regions.map(region => {
+    if (region.name.localeCompare(regionName) != 0) 
+      return;
+
+    result = region.urls;
   })  
   return result;
 }
@@ -405,3 +444,5 @@ function forEachTrip(routingJSON, callback) {
     })
   });
 }
+
+
