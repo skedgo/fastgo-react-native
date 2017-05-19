@@ -17,7 +17,7 @@ For simplicity, we are going to restrict our app to [a single city], but it can 
 
 ![Endpoints Diagram][diagram]
 
-[diagram]: FastGoEndpoinstSimpleDiagram.png "Endpoints Diagram"
+[diagram]: FastGoEndpointsSimpleDiagram.png "Endpoints Diagram"
 
 ## Let's begin
 
@@ -62,7 +62,7 @@ Note that we do a `POST` including the X-TripGo-Key in the header, and we send a
 			},
 			"title": "City bikes"
 		},
-    {"...": "..."}
+    "<modes>" : {"...": "..."}
 	},
 	"regions": [
 		{
@@ -73,7 +73,9 @@ Note that we do a `POST` including the X-TripGo-Key in the header, and we send a
 					"timezone": "Australia/Sydney",
 					"title": "Sydney, NSW, Australia"
 				}, 
-        {"...": "..."}
+        {
+          "...": "..."
+        }
 			],
 			"modes": ["<string>", "..."],
 			"name": "AU_NSW_Sydney",
@@ -81,7 +83,9 @@ Note that we do a `POST` including the X-TripGo-Key in the header, and we send a
 			"timezone": "Australia/Sydney",
 			"urls": ["<string>", "..."]
 		},
-    {"...": "..."}
+    {
+      "...": "..."
+    }
 	]
 }
 ```
