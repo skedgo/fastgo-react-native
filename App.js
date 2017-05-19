@@ -1,11 +1,13 @@
 import React, { Component } from 'react';
 import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import MapView from 'react-native-maps';
-import Polyline from 'polyline';
 
 import env from './env.js'
 import redImg from './assets/red.png';
 import greenImg from './assets/green.png';
+
+import Trip from './Trip.js';
+import Places from './Places.js';
 
 export default class FastGo extends Component {
   constructor(props) {
@@ -13,9 +15,10 @@ export default class FastGo extends Component {
     this.state = {
       isLoading: true,
       selectedMode: 'me_car',
-      currentPosition: {'latitude': -33.8755296,"longitude": 151.2066007},
+      currentPosition: env.START_LOCATION,
       modes: [],
       baseURLs: [],
+      thePlaces: Places,
       selectedPlaces: 'atm',
       places: {
         'mcdonalds' : [],
@@ -29,42 +32,45 @@ export default class FastGo extends Component {
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       },
-      polylines: [],
       showModeSelector: false,
       showPlaceSelector: false,
+      selectedTrip: null,
     }
   }
 
-
   componentDidMount() {
+    let updateLocation = (newLocation) => {
+      newLocation.latitudeDelta = 0.04;
+      newLocation.longitudeDelta = 0.04;
+      this.setState({'currentPosition': newLocation, 'region': newLocation});
+    }
+
+    if (env.GEOLOCATION_ENABLED) {  
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          var currentPosition = {'latitude': -33.8755296,"longitude": 151.2066007};
-          // var currentPosition = position.coords;
-          position.coords.latitudeDelta = 0.02;
-          position.coords.longitudeDelta = 0.02;
-          this.setState({currentPosition});
-          // this.setState({currentPosition, 'region': position.coords});
-        },
-        (error) => alert(JSON.stringify(error)),
+        (position) => updateLocation(position.coords),
+        (error) => log(JSON.stringify(error)),
         {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000}
       );
-      places = getLocations(this.state.currentPosition, Object.keys(this.state.places));
-      this.setState({places});
-      log(this.state.places)
-      return getRegions()
-      .then((regionsJSON) => {
-        this.setState({
-          isLoading: false,
-          modes: getModes(regionsJSON, "AU_NSW_Sydney"),
-          baseURLs: getURLs(regionsJSON, "AU_NSW_Sydney"),
-        }, function() {
-          // do something with new state
-        });
-      })
-      .catch((error) => {
-        console.error(error);
+    } else {
+      updateLocation(env.START_LOCATION)
+    }
+
+    places = getLocations(this.state.currentPosition, Object.keys(this.state.places));
+    this.setState({places});
+    log(this.state.places)
+    return getRegions()
+    .then((regionsJSON) => {
+      this.setState({
+        isLoading: false,
+        modes: getModes(regionsJSON, env.REGION_CODE),
+        baseURLs: getURLs(regionsJSON, env.REGION_CODE),
+      }, function() {
+        // do something with new state
       });
+    })
+    .catch((error) => {
+      console.error(error);
+    });
   }
 
   render() {
@@ -96,25 +102,26 @@ export default class FastGo extends Component {
     
     let onGoPress = () => {
       this.setState({'showPlaceSelector': false,'showModeSelector': false, message: 'Computing Trips... '})
-        return computeFastestTrip(this.state.baseURLs,
-                                  this.state.selectedMode, 
-                                  this.state.places[this.state.selectedPlaces],
-                                  this.state.currentPosition)
-        .then((fastestTrip) => {
-          if (fastestTrip.routingJSON === null) {
-            this.setState({
-                message: 'Error: ' + fastestTrip.error.error 
-            })
-          } else {
-            this.setState({
-                message: 'Computed Trips: ' + fastestTrip.routingJSON.segmentTemplates[0].action,
-                polylines: draw(fastestTrip) 
-            })
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      return computeFastestTrip(this.state.baseURLs,
+                                this.state.selectedMode, 
+                                this.state.places[this.state.selectedPlaces],
+                                this.state.currentPosition)
+      .then((fastestTrip) => {
+        if (fastestTrip.routingJSON === null) {
+          this.setState({
+              message: 'Error: ' + fastestTrip.error.error 
+          })
+        } else {
+          this.setState({
+              message: 'Computed Trips: ' + fastestTrip.routingJSON.segmentTemplates[0].action,
+              selectedTrip: fastestTrip
+          })
+          log(this.state.polylines)
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
     };
 
     let modesItems = this.state.modes.map( (s, i) => {
@@ -124,6 +131,10 @@ export default class FastGo extends Component {
     let placesItems = Object.keys(this.state.places).map( (s, i) => {
         return <Picker.Item key={i} value={s} label={s} />
     });
+
+    let getPlaces = (key) => {
+      return this.state.places[key];
+    }
 
     return (
       <View style={styles.container}>
@@ -143,7 +154,7 @@ export default class FastGo extends Component {
               coordinate={this.state.currentPosition}
             />
           }
-          {this.state.places[this.state.selectedPlaces].map(place => (
+          {getPlaces(this.state.selectedPlaces).map(place => (
             <MapView.Marker
               title={place.address}
               key={place.key}
@@ -151,13 +162,7 @@ export default class FastGo extends Component {
               coordinate={place}
             />
           ))}
-          <MapView.Polyline
-            key="polyline"
-            coordinates={this.state.polylines}
-            strokeColor="#000"
-            fillColor="rgba(255,255,255,0.5)"
-            strokeWidth={5}
-          />
+          <Trip trip={this.state.selectedTrip}/>
         </MapView>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
@@ -256,7 +261,7 @@ function getLocations(near, keywords) {
   let result = {};
   keywords.map(keyword => {
     let type = keyword === 'atm' ? 'atm' : 'restaurant';
-    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
+    fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
       .then(response => response.json())
       .then(response => {
         let places = new Array();
@@ -268,9 +273,25 @@ function getLocations(near, keywords) {
         })
         result[keyword] = places;
       });
-    promises.push(promise)
   })
-  Promise.all(promises);
+  return result;
+}
+
+function getPlaces(near, keyword) {
+  let result = {};
+  let type = keyword === 'atm' ? 'atm' : 'restaurant';
+  fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
+    .then(response => response.json())
+    .then(response => {
+      let places = new Array();
+      response.results.map(place => {
+        places.push({'latitude':place.geometry.location.lat, 
+                     'longitude':place.geometry.location.lng,
+                     'address':place.name,
+                     'key':place.place_id})
+      })
+      result[keyword] = places;
+    });
   return result;
 }
 
@@ -392,59 +413,6 @@ function forEachTrip(routingJSON, callback) {
       callback(trip)
     })
   });
-}
-
-function getSegmentTemplate(templates, hash) {
-  let result = null;
-  templates.map(template => {
-    if (template.hashCode === hash)
-      result = template;
-  })
-  return result;
-}
-
-function buildSelectedTrip(routingJSON, seletedTripTemporaryURL) {
-  let result = null;
-  let segmentTemplates = routingJSON.segmentTemplates;
-  forEachTrip(routingJSON, (trip => {
-    if (trip.temporaryURL !== seletedTripTemporaryURL)
-      return;
-    trip.segments.map(segment => {
-      segmentTemplate = getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
-      for (var key in segmentTemplate)
-        segment[key] = segmentTemplate[key];
-    })
-    result = trip;
-  }));
-  return result;
-}
-
-function draw(faster) {
-  let trip = buildSelectedTrip(faster.routingJSON, faster.temporaryURL);
-  log(trip);
-  result = new Array();
-  trip.segments.map(segment => {
-    if (segment.hasOwnProperty('location')) {
-      result.push({'latitude':segment.location.lat, 'longitude':segment.location.lng});
-      return;
-    }
-    result.push({'latitude':segment.from.lat, 'longitude':segment.from.lng});
-    waypoints = segment.hasOwnProperty('streets') ? segment.streets : segment.shapes;
-    waypoints.map(waypoint => {
-      if (waypoint.hasOwnProperty('travelled') && !waypoint.travelled)
-        return;
-      let steps = Polyline.decode(waypoint.encodedWaypoints);
-      for (let i=0; i < steps.length; i++) {
-        let tempLocation = {
-          latitude : steps[i][0],
-          longitude : steps[i][1]
-        }
-        result.push(tempLocation);
-      }
-    })
-    result.push({'latitude':segment.to.lat, 'longitude':segment.to.lng});
-  })
-  return result;
 }
 
 function log(message) {
