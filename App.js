@@ -294,6 +294,7 @@ function computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosit
     let faster = null;
     let arrive = null;
     routingJSONs.map((routingJSON, i) => {
+      log(routingJSON)
       if (routingJSON.hasOwnProperty('error')) {
         error = routingJSON
         return
@@ -338,10 +339,11 @@ function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
     fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
     toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
     mode: selectedMode,
-    wp: '(1,1,1,1)' 
+    wp: '(1,1,1,1)',
+    v: 11
   }
   let url = baseUrl + '/routing.json'+ 
-            `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=11`
+            `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}`
   log(url)
   return fetch(url, {
       method: 'GET',

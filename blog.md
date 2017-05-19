@@ -20,18 +20,192 @@ As mentioned earlier, we first need to know to which server we can send our requ
 So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes, we can search the JSON response for [city] and get the list of urls, which will become our set of base urls to try for the following requests. We can cache this response, but we still need to refresh it regularly, as those URLs may change without notice.
 
 
-[sample request/response pair]
+### Request 
 
-Notes on request/response details.
+```js
+function getRegions() {
+  return fetch(baseAPIurl + 'regions.json', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+            },
+            body: JSON.stringify({
+              v: '2',
+            })
+          })
+          .then((response) => response.json());
+}
+```
+
+Note that we do a `POST` with including our X-TripGo-Key in the header, and we send as body of the post a JSON object indicating that we want the second version of the regions.json endpoint.
+
+### Response 
+
+```json
+{
+	"hashCode": 1993408060,
+	"modes": {
+		"cy_bic-s_citybikes-helsinki": {
+			"URL": "https://www.hsl.fi/en/citybikes",
+			"color": {
+				"blue": 52,
+				"green": 188,
+				"red": 251
+			},
+			"title": "City bikes"
+		},...
+	},
+	"regions": [
+		{
+			"cities": [
+				{
+					"lat": -33.86749,
+					"lng": 151.20699,
+					"timezone": "Australia/Sydney",
+					"title": "Sydney, NSW, Australia"
+				},...
+			],
+			"modes": [<string>,...],
+			"name": "AU_NSW_Sydney",
+			"polygon": "nwcvE_fno[owyR??mcjRnwyR?",
+			"timezone": "Australia/Sydney",
+			"urls": [<string>,...]
+		}...
+	]
+}
+```
+
+Therefore, we get a JSON response with a hashcode value, which can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed. We also get the list of available modes with their data and the list of regions. Each region will have a list of cities in it, the list of modes (just the keys of the values in the global modes), a name, the polygon that is covered by that region, a default TimeZone and the list of base URLs we can use to get data of that region.
+
 
 Having the base urls for our city is the first step, we need to get from the user, its current location, the selection of one or more of the available modes and a set of places of a given kind (we will assume a fixed list of places, since this is out of our scope). Once we have all these, we are ready to move to the core of our application... routing. 
 
 
 ## Routing
 
-We need to find which of the possible places is the faster for the user to get there. We will use routing.json endpoint to compute trips from the user current location to all the possible places, using the selected mode or modes of transport. In order to do so, we need to send in every request, the from location (current location) with each possible place as to location, including the selected mode.  
+We need to find which of the possible places is the faster for the user to get there. We will use `routing.json` endpoint to compute trips from the user current location to all the possible places, using the selected mode or modes of transport. In order to do so, we need to send in every request, the from location (current location) with each possible place as to location, including the selected mode.  
 
-[sample request/response pair]
+### Request 
+
+```js
+function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
+  data = {
+    fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
+    toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
+    mode: selectedMode,
+    wp: '(1,1,1,1)',
+    v: 11 
+  }
+  let url = baseUrl + '/routing.json'+ 
+            `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}`
+
+  return fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+      }
+    })
+    .then((response) => response.json())
+}
+```
+
+In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences and the expected version of the result.
+
+### Response 
+
+```json
+{
+  "realTimeStamp": 0,
+  "region": "AU_NSW_Sydney",
+  "regions": [
+    "AU_NSW_Sydney"
+  ],
+  "groups": [
+    {
+      "sources": [
+      	...
+      ],
+      "trips": [
+        {
+          "arrive": 1495154251,
+          "availability": "AVAILABLE",
+          "caloriesCost": 30,
+          "carbonCost": 3,
+          "currencySymbol": "AUD",
+          "depart": 1495152642,
+          "hassleCost": 10,
+          "mainSegmentHashCode": -1301095336,
+          "moneyCost": 4.15,
+          "moneyUSDCost": 3.25,
+          "plannedURL": "<baseURL>/trip/planned/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "progressURL": "<baseURL>/trip/progress/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "queryIsLeaveAfter": true,
+          "queryTime": 1495152642,
+          "saveURL": "<baseURL>/trip/save/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "segments": [
+            {
+              "availability": "AVAILABLE",
+              "endTime": 1495154082,
+              "realTime": true,
+              "segmentTemplateHashCode": -1301095336,
+              "startTime": 1495152642
+            }
+          ],
+          "temporaryURL": "<baseURL>/trip/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "updateURL": "<baseURL>/trip/update/dd7ada5e-ddbd-4def-927c-880b2d60e57f?hash=-1553495163",
+          "weightedScore": 26.3
+        },...
+      ]
+    }
+  ],
+  "segmentTemplates": [
+    {
+      "action": "Drive Car<DURATION>",
+      "durationWithoutTraffic": 1255,
+      "from": {
+        "address": "George Street & Albion Place",
+        "class": "Location",
+        "lat": -33.87553,
+        "lng": 151.2066,
+        "timezone": "Australia/Sydney"
+      },
+      "hashCode": -1301095336,
+      "metres": 6899,
+      "mini": {
+        "description": "Princes Highway & Albert Street",
+        "instruction": "Drive Car",
+        "mainValue": "7.0km"
+      },
+      "modeIdentifier": "me_car",
+      "modeInfo": {
+        "alt": "Car",
+        "identifier": "me_car",
+        "localIcon": "car"
+      },
+      "notes": "Live traffic: from 16 mins to 26 mins\n7.0km",
+      "streets": [
+        {
+          "encodedWaypoints": <string>
+        }
+      ],
+      "to": {
+        "address": "Princes Highway & Albert Street",
+        "class": "Location",
+        "lat": -33.91288,
+        "lng": 151.17905,
+        "timezone": "Australia/Sydney"
+      },
+      "travelDirection": 323,
+      "type": "unscheduled",
+      "visibility": "in summary"
+    },...
+  ]
+}
+```
 
 Note that the responses are optimized to reduce its size, trying to eliminate any duplicated data. So, you will find a field in the response called `segmentTemplates`, which will include information of segments that is shared among several trips in that response. You will also get the trips grouped in a field called `groups`, each group takes the same modes, and similar stops and tickets. Each trip will have a `depart` and `arrive` field, and also the segments that form the trip among other useful values.
 
