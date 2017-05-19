@@ -3,10 +3,9 @@ import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, Style
 import MapView from 'react-native-maps';
 import Polyline from 'polyline';
 
+import env from './env.js'
 import redImg from './assets/red.png';
 import greenImg from './assets/green.png';
-
-const baseAPIurl = "https://bigbang.skedgo.com/satapp-beta/";
 
 export default class FastGo extends Component {
   constructor(props) {
@@ -257,7 +256,7 @@ function getLocations(near, keywords) {
   let result = {};
   keywords.map(keyword => {
     let type = keyword === 'atm' ? 'atm' : 'restaurant';
-    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=AIzaSyCLCOtDsWaH9KSrc5Sees7T11n0k12wtL0`)
+    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
       .then(response => response.json())
       .then(response => {
         let places = new Array();
@@ -276,12 +275,12 @@ function getLocations(near, keywords) {
 }
 
 function getRegions() {
-  return fetch(baseAPIurl + 'regions.json', {
+  return fetch(env.BASE_API_URL + 'regions.json', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
-              'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+              'X-TripGo-Key': env.TRIPGO_API_KEY 
             },
             body: JSON.stringify({
               v: '2',
@@ -354,7 +353,7 @@ function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-TripGo-Key': '3ff9fc635afb6187ccf33ccc4610b80a' 
+        'X-TripGo-Key': env.TRIPGO_API_KEY 
       }
     })
     .then((response) => response.json())
