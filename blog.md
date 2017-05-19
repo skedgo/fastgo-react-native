@@ -1,7 +1,5 @@
 # Blog Post - FastGo with TripGo API
 
-//TODO mention the repo and that we use react native / javascript
-
 ## Motivation
 
 I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get faster to it, no matter which one it is. For example, I need to get some cash, so, I need to get to an ATM, no matter which one, just any. The same happens to any other kind of places, like Petrol Stations, a grocery stores, or even McDonalds.    
@@ -10,14 +8,17 @@ TripGo API allows us to compute routes from A to B, given a single mode of trans
 
 ## Goal
 
-The main goal is to show one way of using TripGo API platform, and having an example app will help us motivate and describe the usage of different services available in the platform. Given that our platform has free tier and you can sign up to get an API key, we share the complete example app in GitHub so you can play with it yourself.
+The main goal is to show one way of using TripGo API platform, and having an example app will help us motivate and describe the usage of different services available in the platform. Given that our platform has free tier and you can sign up to get an API key, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can play with it yourself.
 
-For simplicity, we are going to restrict our app to [a single city], but it can easily be extended to cover all the cities covered in our platform. We will be then use regions endpoint to get the server urls we need to use to compute our routes, we will use routing endpoint to compute the actual trips, locations endpoint to show relevant POIs in the map near the user, and services endpoint to show realtime information of a specific transit service.
-
+For simplicity, we are going to restrict our app to [a single city], but it can easily be extended to cover all the cities covered in our platform. Our platform provides several endpoints, a small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then, either go with the routing group or the location/services group, as shown in the following diagram.
 
 ![Endpoints Diagram][diagram]
 
 [diagram]: FastGoEndpointsSimpleDiagram.png "Endpoints Diagram"
+
+In this post, we will focus on the routing group. We will use `regions` endpoint to get the server urls we need to use to compute our routes and the available modes, `routing` endpoint to compute the actual trips, and then, use the `trip update` url to get realtime updated information of our recently computed trip.
+
+[Should we mention something about a future blog post of the `location/services` group?]
 
 ## Let's begin
 
@@ -51,42 +52,42 @@ Note that we do a `POST` including the X-TripGo-Key in the header, and we send a
 
 ```json
 {
-	"hashCode": 1993408060,
-	"modes": {
-		"cy_bic-s_citybikes-helsinki": {
-			"URL": "https://www.hsl.fi/en/citybikes",
-			"color": {
-				"blue": 52,
-				"green": 188,
-				"red": 251
-			},
-			"title": "City bikes"
-		},
+  "hashCode": 1993408060,
+  "modes": {
+    "cy_bic-s_citybikes-helsinki": {
+      "URL": "https://www.hsl.fi/en/citybikes",
+      "color": {
+        "blue": 52,
+        "green": 188,
+        "red": 251
+      },
+      "title": "City bikes"
+    },
     "<modes>" : {"...": "..."}
-	},
-	"regions": [
-		{
-			"cities": [
-				{
-					"lat": -33.86749,
-					"lng": 151.20699,
-					"timezone": "Australia/Sydney",
-					"title": "Sydney, NSW, Australia"
-				}, 
+  },
+  "regions": [
+    {
+      "cities": [
+        {
+          "lat": -33.86749,
+          "lng": 151.20699,
+          "timezone": "Australia/Sydney",
+          "title": "Sydney, NSW, Australia"
+        }, 
         {
           "...": "..."
         }
-			],
-			"modes": ["<string>", "..."],
-			"name": "AU_NSW_Sydney",
-			"polygon": "nwcvE_fno[owyR??mcjRnwyR?",
-			"timezone": "Australia/Sydney",
-			"urls": ["<string>", "..."]
-		},
+      ],
+      "modes": ["<string>", "..."],
+      "name": "AU_NSW_Sydney",
+      "polygon": "nwcvE_fno[owyR??mcjRnwyR?",
+      "timezone": "Australia/Sydney",
+      "urls": ["<string>", "..."]
+    },
     {
       "...": "..."
     }
-	]
+  ]
 }
 ```
 
@@ -139,7 +140,7 @@ In this case we do a GET request, also including the `X-TripGo-Key` in the heade
   "groups": [
     {
       "sources": [
-      	"..."
+        "..."
       ],
       "trips": [
         {
@@ -225,7 +226,10 @@ Note that the responses are optimized to reduce its size, trying to eliminate an
 
 For each group of trips, we will select a representative one, which will be the one having the lower arrive time and the lower depart time greater than now. Then we will sort all the representative trips by arrive time. The one that we want to show to the user is the first one, but we may also show other alternatives.
 
-[screenshot?]
+![Screenshot][screenshot]
+
+[screenshot]: screenshot.png "Showing fastest route"
+
 
 ### Extracting trip detailed information
 
@@ -250,9 +254,9 @@ function buildSelectedTrip(routingJSON, seletedTripTemporaryURL) {
 }
 ```
 
-Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined and you can look at them in [GitHub](github.com). Now that we have a trip we all the information, we want to show it in the map. The trip will have a list of what we call `segments`, which correspond will correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contail all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
+Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined and you can look at them in the shared code. Now that we have a trip with all the information, we want to show it in the map. The trip will have a list of what we call `segments`, which correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contail all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
 
-<information about segments with encoded waypoints>
+[should we explain more about this?]
 
 
 ### Advanced parameters and values
@@ -261,13 +265,21 @@ As part of each routing request the user can tweak some parameters that the rout
 
 Another possible parameter is what we call the `weighting preferences`, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares the most in the price and environmental impact of the trip, and almost nothing in the duration and convenience of the trip.
 
-Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconviniece) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some urls to save the trip or update it for realtime changes.
+Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconviniece) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some urls to save the trip or update it for realtime changes, which then leads us to the next and final section, how to update our trip.
 
 
-[we can wrap the post here, or even before, cutting down the advanced subsection, or continue with other sections like the following ones. I think it would be great to add more endpoints, since currently we only used two, but it may also make the post too long (we can split it in two then?)]
+## Update Trip
+
+[TODO]
 
 
-## POIs
+## Summary?
+
+
+[TODO]
+
+
+<!-- ## POIs
 
 Besides showing the trip details in the map, we can also show some POIs for the selected mode of transport, like shared bike pods if it is bike, or stops if it public transport.
 
@@ -276,3 +288,4 @@ Besides showing the trip details in the map, we can also show some POIs for the 
 
 In the case of public transport, we may use the service.json endpoint to obtain real time information for a transit service, and know, if available, whether the bus the user needs to catch is closer or not.
 
+ -->

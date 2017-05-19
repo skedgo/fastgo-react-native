@@ -3,6 +3,9 @@ import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, Style
 import MapView from 'react-native-maps';
 import Polyline from 'polyline';
 
+import redImg from './assets/red.png';
+import greenImg from './assets/green.png';
+
 const baseAPIurl = "https://bigbang.skedgo.com/satapp-beta/";
 
 export default class FastGo extends Component {
@@ -137,6 +140,7 @@ export default class FastGo extends Component {
             <MapView.Marker
               title='You are here'
               key='current'
+              image={redImg}
               coordinate={this.state.currentPosition}
             />
           }
@@ -144,6 +148,7 @@ export default class FastGo extends Component {
             <MapView.Marker
               title={place.address}
               key={place.key}
+              image={greenImg}
               coordinate={place}
             />
           ))}
