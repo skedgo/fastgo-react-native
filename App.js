@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import MapView from 'react-native-maps';
-import polyline from 'polyline';
+import Polyline from 'polyline';
 
 const baseAPIurl = "https://bigbang.skedgo.com/satapp-beta/";
 
@@ -14,10 +14,11 @@ export default class FastGo extends Component {
       currentPosition: {'latitude': -33.8755296,"longitude": 151.2066007},
       modes: [],
       baseURLs: [],
-      selectedPlaces: 'mcdonalds',
+      selectedPlaces: 'atm',
       places: {
         'mcdonalds' : [],
         'starbucks' : [],
+        'atm' : [],
       },
       message: null,
       region: {
@@ -250,7 +251,8 @@ function getLocations(near, keywords) {
   let promises = new Array();
   let result = {};
   keywords.map(keyword => {
-    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=restaurant&keyword=${keyword}&key=AIzaSyCLCOtDsWaH9KSrc5Sees7T11n0k12wtL0`)
+    let type = keyword === 'atm' ? 'atm' : 'restaurant';
+    promise = fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=AIzaSyCLCOtDsWaH9KSrc5Sees7T11n0k12wtL0`)
       .then(response => response.json())
       .then(response => {
         let places = new Array();
@@ -294,7 +296,6 @@ function computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosit
     let faster = null;
     let arrive = null;
     routingJSONs.map((routingJSON, i) => {
-      log(routingJSON)
       if (routingJSON.hasOwnProperty('error')) {
         error = routingJSON
         return
@@ -317,19 +318,17 @@ function computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosit
 
 function getFirstArrive(routingJSON, now) {
   let result = null;
-  routingJSON.groups.map((group => {
-    group.trips.map((trip => {
-      if (trip.depart <= now) {
-        log('found one in the past')
-        return;
-      }
-      if (result === null || result.arrive > trip.arrive) {
-        log('found a faster: ' + trip.arrive)
-        result = {};
-        result.arrive = trip.arrive;
-        result.temporaryURL = trip.temporaryURL;
-      }
-    }))
+  forEachTrip(routingJSON, (trip => {
+    if (trip.depart <= now) {
+      log('found one in the past')
+      return;
+    }
+    if (result === null || result.arrive > trip.arrive) {
+      log('found a faster: ' + trip.arrive)
+      result = {};
+      result.arrive = trip.arrive;
+      result.temporaryURL = trip.temporaryURL;
+    }
   }))
   return result;
 }
@@ -383,6 +382,14 @@ function getURLs(regionsJSON, regionName) {
   return result;
 }
 
+function forEachTrip(routingJSON, callback) {
+  routingJSON.groups.map(group => {
+    group.trips.map(trip => {
+      callback(trip)
+    })
+  });
+}
+
 function getSegmentTemplate(templates, hash) {
   let result = null;
   templates.map(template => {
@@ -392,13 +399,14 @@ function getSegmentTemplate(templates, hash) {
   return result;
 }
 
-function getSelectedTrip(faster) {
+function buildSelectedTrip(routingJSON, seletedTripTemporaryURL) {
   let result = null;
-  forEachTrip(faster.routingJSON, (trip => {
-    if (trip.temporaryURL !== faster.temporaryURL)
+  let segmentTemplates = routingJSON.segmentTemplates;
+  forEachTrip(routingJSON, (trip => {
+    if (trip.temporaryURL !== seletedTripTemporaryURL)
       return;
     trip.segments.map(segment => {
-      segmentTemplate = getSegmentTemplate(faster.routingJSON.segmentTemplates, segment.segmentTemplateHashCode);
+      segmentTemplate = getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
       for (var key in segmentTemplate)
         segment[key] = segmentTemplate[key];
     })
@@ -408,7 +416,7 @@ function getSelectedTrip(faster) {
 }
 
 function draw(faster) {
-  let trip = getSelectedTrip(faster);
+  let trip = buildSelectedTrip(faster.routingJSON, faster.temporaryURL);
   log(trip);
   result = new Array();
   trip.segments.map(segment => {
@@ -421,7 +429,7 @@ function draw(faster) {
     waypoints.map(waypoint => {
       if (waypoint.hasOwnProperty('travelled') && !waypoint.travelled)
         return;
-      let steps = polyline.decode(waypoint.encodedWaypoints);
+      let steps = Polyline.decode(waypoint.encodedWaypoints);
       for (let i=0; i < steps.length; i++) {
         let tempLocation = {
           latitude : steps[i][0],
@@ -437,14 +445,6 @@ function draw(faster) {
 
 function log(message) {
   console.log(message)
-}
-
-function forEachTrip(routingJSON, callback) {
-  routingJSON.groups.map(group => {
-    group.trips.map(trip => {
-      callback(trip)
-    })
-  });
 }
 
 
