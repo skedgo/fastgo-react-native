@@ -24,12 +24,12 @@ export default class Trip extends Component {
 			fillColor="rgba(255,255,255,0.5)"
 			strokeWidth={5}
 			/>
-			);
+		);
 	}
 
 
 	draw(faster) {
-		let trip = this.buildSelectedTrip(faster.routingJSON, faster.temporaryURL);
+		let trip = this.buildSelectedTrip(faster.routingJSON, faster.updateURL);
 		this.log(trip);
 		result = new Array();
 		trip.segments.map(segment => {
@@ -56,11 +56,11 @@ export default class Trip extends Component {
 		return result;
 	}
 
-	buildSelectedTrip(routingJSON, seletedTripTemporaryURL) {
+	buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
 		let result = null;
 		let segmentTemplates = routingJSON.segmentTemplates;
 		this.forEachTrip(routingJSON, (trip => {
-			if (trip.temporaryURL !== seletedTripTemporaryURL)
+			if (trip.updateURL !== seletedTripUpdateURL)
 				return;
 			trip.segments.map(segment => {
 				segmentTemplate = this.getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);

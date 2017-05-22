@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { ActivityIndicator, Button, Picker, Text, View, Alert, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import MapView from 'react-native-maps';
+import TimerMixin from 'react-timer-mixin';
 
 import env from './env.js'
 import redImg from './assets/red.png';
@@ -15,26 +16,17 @@ export default class FastGo extends Component {
     this.state = {
       isLoading: true,
       selectedMode: 'me_car',
+      selectedPlaces: 'starbucks',
+      selectedTrip: null,
       currentPosition: env.START_LOCATION,
       modes: [],
       baseURLs: [],
-      thePlaces: Places,
-      selectedPlaces: 'atm',
-      places: {
-        'mcdonalds' : [],
-        'starbucks' : [],
-        'atm' : [],
-      },
+      placesOptions: [],
+      places: [],
       message: null,
-      region: {
-        latitude: -33.8755296,
-        longitude: 151.2066007,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      },
+      region: env.REGION,
       showModeSelector: false,
       showPlaceSelector: false,
-      selectedTrip: null,
     }
   }
 
@@ -55,9 +47,23 @@ export default class FastGo extends Component {
       updateLocation(env.START_LOCATION)
     }
 
-    places = getLocations(this.state.currentPosition, Object.keys(this.state.places));
-    this.setState({places});
-    log(this.state.places)
+    setInterval(() => {
+      if (this.state.selectedTrip !== null) {
+        updateTrip(this.state.selectedTrip.updateURL)
+        .then((routingJSON) => {
+          log(routingJSON);
+          if (Object.keys(routingJSON).length === 0)
+            return;
+          let arrive = getFirstArrive(routingJSON, 0);
+          log(arrive);
+          let error = null;
+          this.setState({'selectedTrip': 
+            {'routingJSON': routingJSON, 'updateURL': arrive.updateURL, error}},
+            () => log('updatedState'))
+        });
+      }
+    }, 5000);
+
     return getRegions()
     .then((regionsJSON) => {
       this.setState({
@@ -72,6 +78,14 @@ export default class FastGo extends Component {
       console.error(error);
     });
   }
+
+  update(places, placesOptions) {
+      if (places === undefined) {
+        places = this.refs.places.getPlaces();
+        placesOptions = this.refs.places.getPlacesOptions();
+      } 
+      this.setState({places, placesOptions})
+    }
 
   render() {
     if (this.state.isLoading) {
@@ -104,7 +118,7 @@ export default class FastGo extends Component {
       this.setState({'showPlaceSelector': false,'showModeSelector': false, message: 'Computing Trips... '})
       return computeFastestTrip(this.state.baseURLs,
                                 this.state.selectedMode, 
-                                this.state.places[this.state.selectedPlaces],
+                                this.state.places,
                                 this.state.currentPosition)
       .then((fastestTrip) => {
         if (fastestTrip.routingJSON === null) {
@@ -116,7 +130,6 @@ export default class FastGo extends Component {
               message: 'Computed Trips: ' + fastestTrip.routingJSON.segmentTemplates[0].action,
               selectedTrip: fastestTrip
           })
-          log(this.state.polylines)
         }
       })
       .catch((error) => {
@@ -128,7 +141,7 @@ export default class FastGo extends Component {
         return <Picker.Item key={i} value={s.mode} label={s.title} />
     });
 
-    let placesItems = Object.keys(this.state.places).map( (s, i) => {
+    let placesItems = this.state.placesOptions.map( (s, i) => {
         return <Picker.Item key={i} value={s} label={s} />
     });
 
@@ -154,7 +167,14 @@ export default class FastGo extends Component {
               coordinate={this.state.currentPosition}
             />
           }
-          {getPlaces(this.state.selectedPlaces).map(place => (
+          <Places 
+            selectedPlace={this.state.selectedPlaces}
+            currentPosition={this.state.currentPosition}
+            places={this.state.places}
+            ref='places'
+            update={this.update.bind(this)}
+          />
+          {this.state.places.map(place => (
             <MapView.Marker
               title={place.address}
               key={place.key}
@@ -203,7 +223,8 @@ export default class FastGo extends Component {
           <Picker
             style={styles.selector}
             selectedValue={this.state.selectedPlaces}
-            onValueChange={(place) => this.setState({selectedPlaces: place})}>
+            onValueChange={(place) => this.setState({selectedPlaces: place},
+                            () => this.update())}>
             {placesItems}
           </Picker>
         }
@@ -256,44 +277,7 @@ const styles = StyleSheet.create({
   }
 });
 
-function getLocations(near, keywords) {
-  let promises = new Array();
-  let result = {};
-  keywords.map(keyword => {
-    let type = keyword === 'atm' ? 'atm' : 'restaurant';
-    fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
-      .then(response => response.json())
-      .then(response => {
-        let places = new Array();
-        response.results.map(place => {
-          places.push({'latitude':place.geometry.location.lat, 
-                       'longitude':place.geometry.location.lng,
-                       'address':place.name,
-                       'key':place.place_id})
-        })
-        result[keyword] = places;
-      });
-  })
-  return result;
-}
 
-function getPlaces(near, keyword) {
-  let result = {};
-  let type = keyword === 'atm' ? 'atm' : 'restaurant';
-  fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${near.latitude},${near.longitude}&radius=5000&type=${type}&keyword=${keyword}&key=${env.GOOGLE_PLACES_API_KEY}`)
-    .then(response => response.json())
-    .then(response => {
-      let places = new Array();
-      response.results.map(place => {
-        places.push({'latitude':place.geometry.location.lat, 
-                     'longitude':place.geometry.location.lng,
-                     'address':place.name,
-                     'key':place.place_id})
-      })
-      result[keyword] = places;
-    });
-  return result;
-}
 
 function getRegions() {
   return fetch(env.BASE_API_URL + 'regions.json', {
@@ -337,7 +321,7 @@ function computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosit
         log("new faster one: " + JSON.stringify(newArrive))
       }
     })
-    return {'routingJSON': faster, 'temporaryURL': arrive.temporaryURL, error};
+    return {'routingJSON': faster, 'updateURL': arrive.updateURL, error};
   }))
 }
 
@@ -352,7 +336,7 @@ function getFirstArrive(routingJSON, now) {
       log('found a faster: ' + trip.arrive)
       result = {};
       result.arrive = trip.arrive;
-      result.temporaryURL = trip.temporaryURL;
+      result.updateURL = trip.updateURL;
     }
   }))
   return result;
@@ -405,6 +389,23 @@ function getURLs(regionsJSON, regionName) {
     result = region.urls;
   })  
   return result;
+}
+
+function updateTrip(updateUrl) {
+  let url = updateUrl + '&v=11';
+  return fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-TripGo-Key': env.TRIPGO_API_KEY
+      }
+    })
+    .then((response) => {
+      return response.json()
+      .catch(err => {
+        return {};
+      });;
+    })
 }
 
 function forEachTrip(routingJSON, callback) {
