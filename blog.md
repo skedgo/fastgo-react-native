@@ -2,15 +2,15 @@
 
 ## Motivation
 
-I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get faster to it, no matter which one it is. For example, I need to get some cash, so, I need to get to an ATM, no matter which one, just any. The same happens to any other kind of places, like Petrol Stations, a grocery stores, or even McDonalds.    
+I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get faster to it, no matter which one it is. For example, I need to get some cash, so, I need to get to an ATM, no matter which one, just any. The same happens to any other kind of places, like petrol stations, a grocery stores, or even McDonalds.    
 
-TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, lets call it 'FastGo', to compute the faster way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity) and a set of possible places for each available kind. 
+TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, lets call it 'FastGo', to compute the faster way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity we will only allow one) and a set of possible places for each available kind. 
 
 ## Goal
 
 The main goal is to show one way of using TripGo API platform, and having an example app will help us motivate and describe the usage of different services available in the platform. Given that our platform has free tier and you can sign up to get an API key, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can play with it yourself.
 
-For simplicity, we are going to restrict our app to [a single city], but it can easily be extended to cover all the cities covered in our platform. Our platform provides several endpoints, a small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then, either go with the routing group or the location/services group, as shown in the following diagram.
+We are going to restrict our app to a single city, but it can easily be extended to cover any city we already has coverage in. Also, our platform provides several endpoints, a small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then either go, for example, with the routing group or the location/services group, as shown in the following diagram.
 
 ![Endpoints Diagram][diagram]
 
@@ -91,7 +91,7 @@ Note that we do a `POST` including the X-TripGo-Key in the header, and we send a
 }
 ```
 
-Therefore, we get a JSON response with a hashcode value, which can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed. We also get the list of available modes with their data and the list of regions. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes), a name, the polygon that is covered by that region, a default TimeZone and the list of base URLs we can use to get data of that region.
+The response is a JSON object with a hashcode value, the list of available modes with their data and the list of regions. The hashcode can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes), a name, the polygon that is covered by that region, a default time zone and the list of base URLs we can use to get data of that region.
 
 
 Having the base urls for our city is the first step, we then need to get from the user, its current location, the selection of one or more of the available modes and a set of places of a given kind (we will assume a fixed list of places, since this is out of our scope). Once we have all these, we are ready to move to the core of our application... routing. 
@@ -99,7 +99,7 @@ Having the base urls for our city is the first step, we then need to get from th
 
 ## Routing
 
-We need to find which of the possible places is the faster for the user to get there. We will use `routing.json` endpoint to compute trips from the user's current location to all the possible places, using the selected mode or modes of transport. In order to do so, we need to send in every request, the from location (current location) with each possible place as to location, including the selected mode. Therefore, we would call multiple times the following method, with the different to locations.
+We need to find which of the possible places is the faster for the user to get there. We will use `routing.json` endpoint to compute trips from the user's current location to all the possible places, using the selected mode or modes of transport. In order to do so, we need to send in every request, the `from` location (current location) with each possible place as `to` location, including the selected mode. Therefore, we would call multiple times the following method, with the different `to` locations.
 
 ### Request 
 
@@ -126,7 +126,7 @@ function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
 }
 ```
 
-In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#Advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not pass any information about when we want to depart or arrival times, meaning that we want trips departing from `now`. This is related to the use we need in this example, but it important to note that you can ask for trips departing at a given time from the origin, or even arriving at a given time to the destination.
+In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not send any information about about depart or arrival times, meaning that we want trips departing from `now`. This is related to the use we need in this example, but it important to note that you can ask for trips departing at a given time from the origin, or even arriving at a given time to the destination.
 
 ### Response 
 
@@ -233,15 +233,15 @@ For each group of trips, we will select a representative one, which will be the 
 
 ### Extracting trip detailed information
 
-In order to be able to show the trip to the user, we will show how to construct from a routing.json response a trip with all the required information. We are going to do so to explain further the format of the response, and also for sake of simplicity of our example. First, we will iterate over all the trips in the response to find the selecte one, identified by its `temporaryURL`, since we know it will be unique for all the trips. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field value pairs to our trip segment.
+In order to be able to display the trip to the user, we will show how to construct from a `routing.json` response a trip with all the required information. We are going to do so to explain further the format of the response, and also for sake of simplicity of our example. First, we will iterate over all the trips in the response to find the selecte one, identified by its `updateURL`, since we know it will be unique for all the trips and it will also be needed later on. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field-value pairs to our trip segment.
 
 
 ```javascript
-function buildSelectedTrip(routingJSON, seletedTripTemporaryURL) {
+function buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
   let result = null;
   let segmentTemplates = routingJSON.segmentTemplates;
   forEachTrip(routingJSON, (trip => {
-    if (trip.temporaryURL !== seletedTripTemporaryURL)
+    if (trip.updateURL !== seletedTripUpdateURL)
       return;
     trip.segments.map(segment => {
       segmentTemplate = getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
@@ -265,13 +265,35 @@ As part of each routing request the user can tweak some parameters that the rout
 
 Another possible parameter is what we call the `weighting preferences`, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares the most in the price and environmental impact of the trip, and almost nothing in the duration and convenience of the trip.
 
-Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconviniece) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some urls to save the trip or update it for realtime changes, which then leads us to the next and final section, how to update our trip.
+Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconvinience) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some urls to save the trip or update it for realtime changes, which then leads us to the next section, how to update our trip.
 
 
 ## Update Trip
 
-[TODO]
+The trips returned by our platform may get updated with realtime information for different reasons. The most common reason for a trip to get updated is due to changes in the information about public services and vehicle locations. In order to get that updated information, the `updateURL` included in the trip needs to be used.
 
+### Request 
+
+```javascript
+function updateTrip(updateUrl) {
+  let url = updateUrl + '&v=11';
+  return fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-TripGo-Key': <API_KEY>
+      }
+    })
+    .then((response) => {
+      return response.json()
+      .catch(err => {
+        return {};
+      });;
+    })
+}
+```
+
+Note that we add to the url coming from the trip an extra query param to inform that we support the version 11 of the response for trips. Also note that the `updateURL` will include a hashcode that will allow the backend to return an empty response if nothing has changed since the latest update, so the app doesn't waste time parsing and redrawing the same trip it already has. The response will have the exact same format as the one returned by `routing.json` endpoint, but with always only one trip, the one is being updated.
 
 ## Summary?
 
