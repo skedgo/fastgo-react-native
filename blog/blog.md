@@ -21,8 +21,6 @@ We are going to restrict our app to a single city, but it can easily be extended
 
 In this post, we will focus on the routing group. We will use the `regions` endpoint to get the server URLs and the available modes we need to use to compute our routes, the `routing` endpoint to compute the actual trips, and then, use the `trip update` URL to get real-time updates of our recently computed trip.
 
-<!-- [Should we mention something about a future blog post of the `location/services` group?] -->
-
 ## Let's begin
 
 As mentioned earlier, we first need to know to which server we can send our requests. This is because the TripGo API platform is composed by several servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
@@ -32,20 +30,20 @@ So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list
 ### Request 
 
 ```js
-	getRegions() {
-		return fetch(env.BASE_API_URL + 'regions.json', {
-			method: 'POST',
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-TripGo-Key': env.TRIPGO_API_KEY 
-			},
-			body: JSON.stringify({
-				v: '2',
-			})
-		})
-		.then((response) => response.json());
-	}
+  getRegions() {
+    return fetch(env.BASE_API_URL + 'regions.json', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-TripGo-Key': env.TRIPGO_API_KEY 
+      },
+      body: JSON.stringify({
+        v: '2',
+      })
+    })
+    .then((response) => response.json());
+  }
 ```
 
 Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send as the body a JSON object indicating that we want the response in the second version of the `regions.json` endpoint.
@@ -105,27 +103,27 @@ We need to find which of the possible places is the fastest for the user. We wil
 ### Request 
 
 ```js
-	computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
-		data = {
-			fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
-			toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
-			mode: selectedMode,
-			wp: '(1,1,1,1)',
-			v: 11,
-			includeStops: true
-		}
-		let url = baseUrl + '/routing.json'+ 
-		`?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}&includeStops=${data.includeStops}`
-		return fetch(url, {
-			method: 'GET',
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-TripGo-Key': env.TRIPGO_API_KEY 
-			}
-		})
-		.then((response) => response.json())
-	}
+computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
+  data = {
+    fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
+    toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
+    mode: selectedMode,
+    wp: '(1,1,1,1)',
+    v: 11,
+    includeStops: true
+  }
+  let url = baseUrl + '/routing.json'+ 
+  `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}&includeStops=${data.includeStops}`
+  return fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-TripGo-Key': env.TRIPGO_API_KEY 
+    }
+  })
+  .then((response) => response.json())
+}
 ```
 
 In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not send any information about depart or arrival times, meaning that we want trips departing *now*. This is related to the use we need in this example, but it is important to note that you can ask for trips departing at a given time from the origin, or arriving at a given time to the destination.
@@ -239,21 +237,21 @@ In order to be able to display the trip to the user, we will show how to constru
 
 
 ```javascript
-	buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
-		let result = null;
-		let segmentTemplates = routingJSON.segmentTemplates;
-		util.forEachTrip(routingJSON, (trip => {
-			if (trip.updateURL !== seletedTripUpdateURL)
-				return;
-			trip.segments.map(segment => {
-				segmentTemplate = this.getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
-				for (var key in segmentTemplate)
-					segment[key] = segmentTemplate[key];
-			})
-			result = trip;
-		}));
-		return result;
-	}
+buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
+  let result = null;
+  let segmentTemplates = routingJSON.segmentTemplates;
+  util.forEachTrip(routingJSON, (trip => {
+    if (trip.updateURL !== seletedTripUpdateURL)
+      return;
+    trip.segments.map(segment => {
+      segmentTemplate = this.getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
+      for (var key in segmentTemplate)
+        segment[key] = segmentTemplate[key];
+    })
+    result = trip;
+  }));
+  return result;
+}
 ```
 
 Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined. You can look at them in the shared code. Now that we have a trip with all the information, we want to show it in the map. The trip will have a list of `segments`, which correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contain all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
@@ -277,22 +275,22 @@ The trips returned by our platform may get updated with realtime information for
 ### Request 
 
 ```javascript
-	updateTrip(updateUrl) {
-	  let url = updateUrl + '&v=11';
-	  return fetch(url, {
-	      method: 'GET',
-	      headers: {
-	        'Accept': 'application/json',
-	        'X-TripGo-Key': env.TRIPGO_API_KEY
-	      }
-	    })
-	    .then((response) => {
-	      return response.json()
-	      .catch(err => {
-	        return {};
-	      });;
-	    })
-	}
+  updateTrip(updateUrl) {
+    let url = updateUrl + '&v=11';
+    return fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-TripGo-Key': env.TRIPGO_API_KEY
+        }
+      })
+      .then((response) => {
+        return response.json()
+        .catch(err => {
+          return {};
+        });;
+      })
+  }
 ```
 
 Note that we add an extra query param to the url coming from the trip to inform that we support version 11 of the response for trips. Also note that the `updateURL` will include a hash code that will allow the backend to return an empty response if nothing has changed since the latest update, so the app doesn't waste time parsing and redrawing the same trip it already has. The response will have the exact same format as the one returned by `routing.json` endpoint, but with always only one trip, the one is being updated.
@@ -301,15 +299,3 @@ Note that we add an extra query param to the url coming from the trip to inform 
 
 We have built FastGo to demonstrate one way of using the most commonly used endpoints of our platform. We also pointed out some tips and tricks. Keep in mind that this is just a subset of all the endpoints available on our platform. For a detailed list of them, go to our [docs](https://skedgo.github.io/tripgo-api/site). Hope you enjoyed it! We would love to hear what you want to build with our API and how we can help you.
 
-
-
-<!-- ## POIs
-
-Besides showing the trip details in the map, we can also show some POIs for the selected mode of transport, like shared bike pods if it is bike, or stops if it public transport.
-
-
-## Services
-
-In the case of public transport, we may use the service.json endpoint to obtain real time information for a transit service, and know, if available, whether the bus the user needs to catch is closer or not.
-
- -->
