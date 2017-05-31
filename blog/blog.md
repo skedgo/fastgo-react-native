@@ -18,9 +18,9 @@ Let’s build a sample app and call it 'FastGo', to compute the quickest way to 
 
 ## Goal
 
-The main goal is to show one way of using [TripGo API platform](https://skedgo.com/en/tripgo-api/), and having an example app will help us motivate and describe the usage of different services available in the platform. Since our platform has free tier, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can sign up to get an API key and play with it yourself.
+The main goal is to show one way of using the [TripGo API platform](https://skedgo.com/en/tripgo-api/). Having an example app will help us motivate and describe the usage of different services available in the platform. Since our platform has a free tier, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can sign up to get an API key and play with it yourself.
 
-We are going to restrict our app to a single city, but it can easily be extended to cover any city we already has [coverage in](https://tripgo.com/world). Also, our platform provides several endpoints, a small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then either go, for example, with the routing group or the location/services group, as shown in the following diagram.
+We are going to restrict our app to a single city, but it can easily be extended to cover any city we already have [coverage in](https://tripgo.com/world). Also, our platform provides several endpoints. A small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then either go, for example, with the routing group or the location/services group, as shown in the following diagram.
 
 ![Endpoints Diagram][diagram]
 
@@ -32,9 +32,9 @@ In this post, we will focus on the routing group. We will use `regions` endpoint
 
 ## Let's begin
 
-As mentioned earlier, we first need to know to which server we can send our requests. This is because TripGo API platform is composed by a few servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
+As mentioned earlier, we first need to know which server we can send our requests to. This is because the TripGo API platform is composed by a few servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
 
-So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes, we can search the JSON response for [city] and get the list of URLs, which will become our set of base URLs to try for the following requests. We can cache this response, but we still need to refresh it regularly, as those URLs may change without notice.
+So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes. We can search the JSON response for [city] and get the list of URLs, which will become our set of base URLs to try for the following requests. We can cache this response, but still need to refresh it regularly, as those URLs may change without notice.
 
 
 ### Request 
@@ -109,7 +109,7 @@ Having the base URLs for our city is the first step, then, we need to get the us
 
 ## Routing
 
-We need to find which of the possible places is the faster for the user to get there. We will use `routing.json` endpoint to compute trips from the user's current location to all the possible places, using the selected mode of transport. In order to do so, we need to send in every request, the `from` location (current location) with each possible place as `to` location, and the selected mode. Therefore, we would call multiple times the following method, with the different `to` locations.
+We need to find which of the possible places is the fastest for the user. We will use `routing.json` endpoint to compute trips from the user's current location to all possible places, using the selected mode of transport. In order to do so, we need to send in every request, the `from` location (current location) with each possible place as `to` location, and the selected mode. Therefore, we would call the following method multiple times, with the different `to` locations.
 
 ### Request 
 
@@ -243,7 +243,7 @@ For each group of trips, we will select a representative one, which will be the 
 
 ### Extracting trip detailed information
 
-In order to be able to display the trip to the user, we will show how to construct from a `routing.json` response a trip with all the required information. We are going to do so to explain further the format of the response, and also for sake of simplicity of our example. First, we will iterate over all the trips to find the selected one, identified by its `updateURL`, since we know it will be unique for all the trips and it will also be needed later on. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field-value pairs to our trip segment.
+In order to be able to display the trip to the user, we will show how to construct a trip from a `routing.json` response with all the required information. We are going to do so to explain the format of the response further, and also for sake of simplicity of our example. First, we will iterate over all the trips to find the selected one, identified by its `updateURL`, since we know it will be unique for all the trips and it will also be needed later on. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field-value pairs to our trip segment.
 
 
 ```javascript
@@ -264,23 +264,23 @@ function buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
 }
 ```
 
-Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined and you can look at them in the shared code. Now that we have a trip with all the information, we want to show it in the map. The trip will have a list of `segments`, which correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contain all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
+Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined. You can look at them in the shared code. Now that we have a trip with all the information, we want to show it in the map. The trip will have a list of `segments`, which correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contain all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
 
 <!-- [should we explain more about this?] -->
 
 
 ### Advanced parameters and values
 
-As part of each routing request the user can tweak some parameters that the routing algorithm will consider at the moment of computing the best trip for the given A-to-B pairs and transport modes. For example, it is possible to change the preferred transfer time, which may extend or reduce the time the trip can use when switching between public transport. It is also possible to set the walking and cycling speed, to improve the accuracy of the computed results. There are also flags to enable some specific features, like `wheelchair` flag that will try to compute a wheelchair friendly trip, including specific information when available; or `conc` that will use concession pricing when possible for computing public transport costs.
+As part of each routing request the user can tweak some parameters that the routing algorithm will consider at the moment of computing the best trip for the given A-to-B pairs and transport modes. For example, it is possible to change the preferred transfer time, which may extend or reduce the time the trip can use when switching between public transport. It is also possible to set the walking and cycling speed, to improve the accuracy of the computed results. There are also flags to enable some specific features, like the `wheelchair` flag that will try to compute a wheelchair friendly trip, including specific information when available; or `conc` that will use concession pricing when possible for computing public transport costs.
 
-Another possible parameter is what we call the `weighting preferences`, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares the most in the price and environmental impact of the trip, and almost nothing in the duration and convenience of the trip.
+Another possible parameter is what we call the `weighting preferences`, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares most about the price and environmental impact of the trip, and almost nothing about the duration and convenience of the trip.
 
 Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconvinience) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some URLs to save the trip or update it for realtime changes, which then leads us to the next section, how to update our trip.
 
 
 ## Update Trip
 
-The trips returned by our platform may get updated with realtime information for different reasons. The most common one is due to changes in the information about public services and vehicle locations. In order to get that updated information, the `updateURL` included in the trip needs to be used.
+The trips returned by our platform may get updated with realtime information for different reasons. The most common one is a change in the data about public services and vehicle locations. In order to get that updated information, the `updateURL` included in the trip needs to be used.
 
 ### Request 
 
@@ -303,11 +303,11 @@ function updateTrip(updateUrl) {
 }
 ```
 
-Note that we add to the url coming from the trip an extra query param to inform that we support the version 11 of the response for trips. Also note that the `updateURL` will include a hash code that will allow the backend to return an empty response if nothing has changed since the latest update, so the app doesn't waste time parsing and redrawing the same trip it already has. The response will have the exact same format as the one returned by `routing.json` endpoint, but with always only one trip, the one is being updated.
+Note that we add an extra query param to the url coming from the trip to inform that we support version 11 of the response for trips. Also note that the `updateURL` will include a hash code that will allow the backend to return an empty response if nothing has changed since the latest update, so the app doesn't waste time parsing and redrawing the same trip it already has. The response will have the exact same format as the one returned by `routing.json` endpoint, but with always only one trip, the one is being updated.
 
 ## Wrapping up
 
-We have built FastGo to show one way of consuming the most commonly used endpoints of our platform. We wanted to show how to used them and point out some tics and tricks. Keep in mind that this is just a subset of all the endpoints available on our platform. For a detailed list of them, go to our [docs](https://skedgo.github.io/tripgo-api/site). Hope you enjoy it, and we would love to hear what you want to build with our API and how can we help you with that.
+We have built FastGo to demonstrate one way of using the most commonly used endpoints of our platform. We also pointed out some tips and tricks. Keep in mind that this is just a subset of all the endpoints available on our platform. For a detailed list of them, go to our [docs](https://skedgo.github.io/tripgo-api/site). Hope you enjoyed it! We would love to hear what you want to build with our API and how we can help you.
 
 
 
