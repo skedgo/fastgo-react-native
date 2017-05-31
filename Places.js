@@ -38,7 +38,9 @@ export default class Places extends Component {
 						place.geometry.location.lng,
 						near.latitude,
 						near.longitude)
-					if (distance > 1 ) {
+
+					// skip locations within 1000 metres radius to avoid weird results for PT
+					if (distance > 1) {
 						places.push({'latitude':place.geometry.location.lat, 
 							'longitude':place.geometry.location.lng,
 							'address':place.name,

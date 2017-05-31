@@ -22,7 +22,6 @@ export default class Api {
 
 	computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosition) {
 		let promises = [];
-		let now = (Date.now() / 1000) - 10
 		let result = [];
 		selectedPlaces.map((place, i) => {
 			promises.push(
@@ -37,15 +36,16 @@ export default class Api {
 						return
 					}
 
-					newArrive = util.getFirstArrive(routingJSON, now);
+					representativeTrip = util.getBetterScore(routingJSON);
+
 					result.push({
 						'routingJSON': routingJSON, 
-						'updateURL': newArrive.updateURL, 
-						'arrive': newArrive.arrive,
-						'depart': newArrive.depart,
-						'carbon': newArrive.carbon,
-						'money': newArrive.money,
-						'currencySymbol': newArrive.currencySymbol,
+						'updateURL': representativeTrip.updateURL, 
+						'arrive': representativeTrip.arrive,
+						'depart': representativeTrip.depart,
+						'carbon': representativeTrip.carbon,
+						'money': representativeTrip.money,
+						'currencySymbol': representativeTrip.currencySymbol,
 						'place': place
 					})
 				}))

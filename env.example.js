@@ -1,9 +1,11 @@
 'use strict';
 
+// copy this file as env.js and fill in with your own API KEYs and configuration values
+
 var Env = {
 	BASE_API_URL: "https://tripgo.skedgo.com/satapp/",
 	TRIPGO_API_KEY: "YOUR_TRIPGO_API_KEY",
-	GOOGLE_PLACES_API_KEY: "YOUR_GOOGLE_PLACES_API_KEY"
+	GOOGLE_PLACES_API_KEY: "YOUR_GOOGLE_PLACES_API_KEY",
 
 	GEOLOCATION_ENABLED: false,
 	START_LOCATION: {'latitude': -33.8755296,"longitude": 151.2066007},

@@ -226,7 +226,7 @@ In this case we do a GET request, also including the `X-TripGo-Key` in the heade
 
 Note that the responses are optimized to reduce their size, trying to eliminate any duplicated data. So, you will find a field in the response called `segmentTemplates`, which will include information of segments shared among several trips in that response. You will also get the trips grouped in a field called `groups`, each group takes the same modes, and similar stops and tickets. Each trip will have a `depart` and `arrive` field, and also the segments that form the trip among other useful values.
 
-For each group of trips, we will select a representative one, which will be the one having the lower arrive time and the lower depart time greater than now. Then we will sort all the representative trips by arrive time. The one that we want to show to the user is the first one, but we may also show other alternatives.
+For each group of trips, we will select a representative one, which will be the one having the lower *score* (the field named `weightedScore`) . Then we will sort all the representative trips by arrive time. The one that we want to show to the user is the first one, but we may also show other alternatives.
 
 ![Screenshot][screenshot]
 
