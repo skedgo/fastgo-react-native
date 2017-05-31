@@ -2,40 +2,39 @@
 
 ## Motivation
 
-I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get faster to it, no matter which one it is. For example, I need to get some cash, so, I need to get to an ATM, no matter which one, just any. The same happens to any other kind of places, like petrol stations, grocery stores, or even McDonalds.    
+I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get to the fastest -- no matter which one it is. For example, I need to get some cash, so I need to get to an ATM -- no matter which one, just any. The same happens to any other kind of place, like petrol stations, grocery stores, or even McDonalds.    
 
-TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, let's call it 'FastGo', to compute the faster way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity we will only allow one) and a set of possible places for each available kind. 
+TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, let's call it '*FastGo*', to compute the fastest way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity we will only allow one) and a set of possible places for each available kind. 
 
 Alternative Motivation section (Sandra)
 
 
-The TripGo API can be used in several different ways: for example, it’s possible to create trips that are most cost efficient, show the quickest route or the most environmentally friendly. It also allows us to compute routes from A to B, given a single mode of transport or multiple modes.
+The TripGo API can be used in several different ways: for example, it’s possible to create trips that are most cost efficient, show the quickest route or the most environmentally friendly. It also allows us to compute alternative routes from A to B, given a single mode of transport or multiple modes, and it allows planning an itinerary for a whole day.
 
-In this blog post I will demonstrate the ability to create the fastest trip from A to B. Say, you’d like to get from your location to the next ATM or petrol station or even McDonalds in the fastest way possible. 
+In this blog post I will demonstrate the ability to get the fastest trip from A to B. Say, you’d like to get from your current location to the next ATM, petrol station or McDonalds by the fastest way possible. 
 
-Let’s build a sample app and call it 'FastGo', to compute the quickest way to a specific place. We need the current location of the user, preferred means of transport (for simplicity we will only allow one) and a set of possible places.
+Let’s build a sample app and call it '*FastGo*', to compute the quickest way to a specific place. We need the current location of the user, preferred means of transport (for simplicity we will only allow one) and a set of possible places.
 
 
 ## Goal
 
-The main goal is to show one way of using the [TripGo API platform](https://skedgo.com/en/tripgo-api/). Having an example app will help us motivate and describe the usage of different services available in the platform. Since our platform has a free tier, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can sign up to get an API key and play with it yourself.
+The main goal is to show one way of using the [TripGo API](https://skedgo.com/en/tripgo-api/). Having an example app will help us motivate and describe the usage of different services available in the platform. Since our platform has a free tier, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can sign up to get an API key and play with it yourself.
 
-We are going to restrict our app to a single city, but it can easily be extended to cover any city we already have [coverage in](https://tripgo.com/world). Also, our platform provides several endpoints. A small subset of them will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from regions.json endpoint, to get information about the available regions and then either go, for example, with the routing group or the location/services group, as shown in the following diagram.
+We are going to restrict our app to a single city, but it can easily be extended to cover any city which the TripGo API [covers](https://tripgo.com/world). The platform provides several endpoints, of which a small subset will be shown and explained in this post. In general, the endpoints are called in a specific sequence, all starting from the `regions.json` endpoint, to get information about the available regions and then either go, for example, with the routing group or the location/services group, as shown in the following diagram:
 
 ![Endpoints Diagram][diagram]
 
 [diagram]: FastGoEndpointsSimpleDiagram.png "Endpoints Diagram"
 
-In this post, we will focus on the routing group. We will use `regions` endpoint to get the server URLs we need to use to compute our routes and the available modes, `routing` endpoint to compute the actual trips, and then, use the `trip update` url to get realtime updated information of our recently computed trip.
+In this post, we will focus on the routing group. We will use the `regions` endpoint to get the server URLs and the available modes we need to use to compute our routes, the `routing` endpoint to compute the actual trips, and then, use the `trip update` URL to get real-time updates of our recently computed trip.
 
 <!-- [Should we mention something about a future blog post of the `location/services` group?] -->
 
 ## Let's begin
 
-As mentioned earlier, we first need to know which server we can send our requests to. This is because the TripGo API platform is composed by a few servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
+As mentioned earlier, we first need to know to which server we can send our requests. This is because the TripGo API platform is composed by several servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
 
-So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes. We can search the JSON response for [city] and get the list of URLs, which will become our set of base URLs to try for the following requests. We can cache this response, but still need to refresh it regularly, as those URLs may change without notice.
-
+So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes. We can search the JSON response for [city] and get the list of URLs, which will become our set of base URLs to use for the following requests. We can cache this response, but still need to refresh it regularly, as those URLs may change without notice, and new regions or modes might get added.
 
 ### Request 
 
@@ -56,7 +55,7 @@ function getRegions() {
 }
 ```
 
-Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send as body of the post a JSON object indicating that we want the response in the second version of the regions.json endpoint.
+Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send as the body a JSON object indicating that we want the response in the second version of the `regions.json` endpoint.
 
 ### Response 
 
@@ -101,8 +100,7 @@ Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send
 }
 ```
 
-The response is a JSON object with a hash code value, the list of available modes with their data and the list of regions. The hash code can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes), a name, the polygon that is covered by that region, a default time zone and the list of base URLs we can use to get data of that region.
-
+The response is a JSON object with a hash code value, the list of available modes with their data and the list of regions. The hash code can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed, such as new regions or transport providers having been added. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes list), a name, the polygon that is covered by that region, a default time zone and the list of base URLs we can use for sending further requests.
 
 Having the base URLs for our city is the first step, then, we need to get the user's current location, the selected mode from the available ones and a set of places of a given kind (we will assume a fixed list of places, since this is out of our scope). Once we have all these, we are ready to move to the core of our application: Routing. 
 
@@ -136,7 +134,7 @@ function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
 }
 ```
 
-In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not send any information about depart or arrival times, meaning that we want trips departing from `now`. This is related to the use we need in this example, but it is important to note that you can ask for trips departing at a given time from the origin, or even arriving at a given time to the destination.
+In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not send any information about depart or arrival times, meaning that we want trips departing *now*. This is related to the use we need in this example, but it is important to note that you can ask for trips departing at a given time from the origin, or arriving at a given time to the destination.
 
 ### Response 
 
