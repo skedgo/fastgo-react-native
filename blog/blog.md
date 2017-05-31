@@ -2,13 +2,6 @@
 
 ## Motivation
 
-I sometimes find myself trying to find a place, any place providing a specific service or product, and I want to find the one I can get to the fastest -- no matter which one it is. For example, I need to get some cash, so I need to get to an ATM -- no matter which one, just any. The same happens to any other kind of place, like petrol stations, grocery stores, or even McDonalds.    
-
-TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, let's call it '*FastGo*', to compute the fastest way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity we will only allow one) and a set of possible places for each available kind. 
-
-Alternative Motivation section (Sandra)
-
-
 The TripGo API can be used in several different ways: for example, it’s possible to create trips that are most cost efficient, show the quickest route or the most environmentally friendly. It also allows us to compute alternative routes from A to B, given a single mode of transport or multiple modes, and it allows planning an itinerary for a whole day.
 
 In this blog post I will demonstrate the ability to get the fastest trip from A to B. Say, you’d like to get from your current location to the next ATM, petrol station or McDonalds by the fastest way possible. 
@@ -39,20 +32,20 @@ So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list
 ### Request 
 
 ```js
-function getRegions() {
-  return fetch(baseAPIurl + 'regions.json', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'X-TripGo-Key': '<API_KEY>' 
-            },
-            body: JSON.stringify({
-              v: '2',
-            })
-          })
-          .then((response) => response.json());
-}
+	getRegions() {
+		return fetch(env.BASE_API_URL + 'regions.json', {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json',
+				'X-TripGo-Key': env.TRIPGO_API_KEY 
+			},
+			body: JSON.stringify({
+				v: '2',
+			})
+		})
+		.then((response) => response.json());
+	}
 ```
 
 Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send as the body a JSON object indicating that we want the response in the second version of the `regions.json` endpoint.
@@ -112,26 +105,27 @@ We need to find which of the possible places is the fastest for the user. We wil
 ### Request 
 
 ```js
-function computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
-  data = {
-    fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
-    toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
-    mode: selectedMode,
-    wp: '(1,1,1,1)',
-    v: 11 
-  }
-
-  return fetch(baseUrl + '/routing.json' + 
-                `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-TripGo-Key': '<API_KEY>' 
-      }
-    })
-    .then((response) => response.json())
-}
+	computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
+		data = {
+			fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
+			toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
+			mode: selectedMode,
+			wp: '(1,1,1,1)',
+			v: 11,
+			includeStops: true
+		}
+		let url = baseUrl + '/routing.json'+ 
+		`?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}&includeStops=${data.includeStops}`
+		return fetch(url, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json',
+				'X-TripGo-Key': env.TRIPGO_API_KEY 
+			}
+		})
+		.then((response) => response.json())
+	}
 ```
 
 In this case we do a GET request, also including the `X-TripGo-Key` in the header, and passing the parameters in the URL, like the from and to locations, the mode selected by the user, the weighting preferences (will be explained in [Advanced](#advanced-parameters-and-values) section) and the expected version of the result. In this case, we do not send any information about depart or arrival times, meaning that we want trips departing *now*. This is related to the use we need in this example, but it is important to note that you can ask for trips departing at a given time from the origin, or arriving at a given time to the destination.
@@ -245,21 +239,21 @@ In order to be able to display the trip to the user, we will show how to constru
 
 
 ```javascript
-function buildSelectedTrip(routingJSON, selectedTripUpdateURL) {
-  let result = null;
-  let segmentTemplates = routingJSON.segmentTemplates;
-  forEachTrip(routingJSON, (trip => {
-    if (trip.updateURL !== selectedTripUpdateURL)
-      return;
-    trip.segments.map(segment => {
-      segmentTemplate = getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
-      for (var key in segmentTemplate)
-        segment[key] = segmentTemplate[key];
-    })
-    result = trip;
-  }));
-  return result;
-}
+	buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
+		let result = null;
+		let segmentTemplates = routingJSON.segmentTemplates;
+		util.forEachTrip(routingJSON, (trip => {
+			if (trip.updateURL !== seletedTripUpdateURL)
+				return;
+			trip.segments.map(segment => {
+				segmentTemplate = this.getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
+				for (var key in segmentTemplate)
+					segment[key] = segmentTemplate[key];
+			})
+			result = trip;
+		}));
+		return result;
+	}
 ```
 
 Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined. You can look at them in the shared code. Now that we have a trip with all the information, we want to show it in the map. The trip will have a list of `segments`, which correspond to the different parts of the trip. Each segment will be of one transport mode (walking, cycling, bus, train, etc.) and will contain all the relevant information of that part of the trip, including the detailed waypoints to be shown in the map. 
@@ -283,22 +277,22 @@ The trips returned by our platform may get updated with realtime information for
 ### Request 
 
 ```javascript
-function updateTrip(updateUrl) {
-  let url = updateUrl + '&v=11';
-  return fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'X-TripGo-Key': <API_KEY>
-      }
-    })
-    .then((response) => {
-      return response.json()
-      .catch(err => {
-        return {};
-      });;
-    })
-}
+	updateTrip(updateUrl) {
+	  let url = updateUrl + '&v=11';
+	  return fetch(url, {
+	      method: 'GET',
+	      headers: {
+	        'Accept': 'application/json',
+	        'X-TripGo-Key': env.TRIPGO_API_KEY
+	      }
+	    })
+	    .then((response) => {
+	      return response.json()
+	      .catch(err => {
+	        return {};
+	      });;
+	    })
+	}
 ```
 
 Note that we add an extra query param to the url coming from the trip to inform that we support version 11 of the response for trips. Also note that the `updateURL` will include a hash code that will allow the backend to return an empty response if nothing has changed since the latest update, so the app doesn't waste time parsing and redrawing the same trip it already has. The response will have the exact same format as the one returned by `routing.json` endpoint, but with always only one trip, the one is being updated.
