@@ -1,4 +1,4 @@
-# Blog Post - [FastGo](https://appetize.io/app/bgrrw12ac24c7wgjatyfk095bw?device=iphone6s&scale=75&orientation=portrait&osVersion=9.3) with TripGo API
+# Blog Post - [FastGo](https://appetize.io/app/tc2uejy91rb594qmw1zmm1kn48?device=iphone6s&scale=75&orientation=portrait&osVersion=9.3) with TripGo API
 
 ## Motivation
 
@@ -230,7 +230,7 @@ In this case we do a GET request, also including the `X-TripGo-Key` in the heade
 }
 ```
 
-Note that the responses are optimized to reduce its size, trying to eliminate any duplicated data. So, you will find a field in the response called `segmentTemplates`, which will include information of segments shared among several trips in that response. You will also get the trips grouped in a field called `groups`, each group takes the same modes, and similar stops and tickets. Each trip will have a `depart` and `arrive` field, and also the segments that form the trip among other useful values.
+Note that the responses are optimized to reduce their size, trying to eliminate any duplicated data. So, you will find a field in the response called `segmentTemplates`, which will include information of segments shared among several trips in that response. You will also get the trips grouped in a field called `groups`, each group takes the same modes, and similar stops and tickets. Each trip will have a `depart` and `arrive` field, and also the segments that form the trip among other useful values.
 
 For each group of trips, we will select a representative one, which will be the one having the lower arrive time and the lower depart time greater than now. Then we will sort all the representative trips by arrive time. The one that we want to show to the user is the first one, but we may also show other alternatives.
 
@@ -239,17 +239,17 @@ For each group of trips, we will select a representative one, which will be the 
 [screenshot]: screenshot.png "Showing fastest route"
 
 
-### Extracting trip detailed information
+### Extracting detailed trip information
 
-In order to be able to display the trip to the user, we will show how to construct a trip from a `routing.json` response with all the required information. We are going to do so to explain the format of the response further, and also for sake of simplicity of our example. First, we will iterate over all the trips to find the selected one, identified by its `updateURL`, since we know it will be unique for all the trips and it will also be needed later on. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field-value pairs to our trip segment.
+In order to be able to display the trip to the user, we will show how to construct a trip from a `routing.json` response with all the required information. We are going to do so to explain the format of the response further, and also for sake of simplicity of our example. First, we will iterate over all the trips to find the selected one, identified by its `updateURL`, since we know it will be unique for all the trips and it will also be needed later on to update the trip with real-time information. Once we have it, we will iterate over all the segments, and use the segment template hash code to find the corresponding segment template in the list of shared templates and copy all the field-value pairs to our trip segment.
 
 
 ```javascript
-function buildSelectedTrip(routingJSON, seletedTripUpdateURL) {
+function buildSelectedTrip(routingJSON, selectedTripUpdateURL) {
   let result = null;
   let segmentTemplates = routingJSON.segmentTemplates;
   forEachTrip(routingJSON, (trip => {
-    if (trip.updateURL !== seletedTripUpdateURL)
+    if (trip.updateURL !== selectedTripUpdateURL)
       return;
     trip.segments.map(segment => {
       segmentTemplate = getSegmentTemplate(segmentTemplates, segment.segmentTemplateHashCode);
@@ -271,9 +271,9 @@ Note that `forEachTrip` and `getSegmentTemplate` are helper methods we defined. 
 
 As part of each routing request the user can tweak some parameters that the routing algorithm will consider at the moment of computing the best trip for the given A-to-B pairs and transport modes. For example, it is possible to change the preferred transfer time, which may extend or reduce the time the trip can use when switching between public transport. It is also possible to set the walking and cycling speed, to improve the accuracy of the computed results. There are also flags to enable some specific features, like the `wheelchair` flag that will try to compute a wheelchair friendly trip, including specific information when available; or `conc` that will use concession pricing when possible for computing public transport costs.
 
-Another possible parameter is what we call the `weighting preferences`, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares most about the price and environmental impact of the trip, and almost nothing about the duration and convenience of the trip.
+Another possible parameter is what we call the *weighting preferences*, which is a set of four values, allowing the user to change the weights among price, environment impact, duration and convenience. The values range from 0.1 to 2 for each of them, meaning unimportant to very important, and the overal sum should not exceed `4`. For example, a `weighing preference` equals to (1.9, 1.9, 0.1, 0.1) means that the user cares most about the price and environmental impact of the trip, and almost nothing about the duration and convenience of the trip.
 
-Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconvinience) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some URLs to save the trip or update it for realtime changes, which then leads us to the next section, how to update our trip.
+Considering the values obtained in the response, each trip will include different costs, like calories (to burn), carbon (CO2 to use), hassle (inconvenience) and money (a null value doesn't mean it's free, but that we don't know its cost). The response will also include some URLs to save the trip or update it for real-time changes, which then leads us to the next section, how to update our trip.
 
 
 ## Update Trip
