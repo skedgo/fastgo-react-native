@@ -1,6 +1,6 @@
 # FastGo
 
-Sample app for demo the API platform and [Blog Post](./docs/README.md) using [React-Native](REACT_NATIVE.md)
+Sample app for demo the API platform and [Blog Post](https://skedgo.github.io/fastgo-react-native/) using [React-Native](REACT_NATIVE.md)
 
 ## Usage
 
