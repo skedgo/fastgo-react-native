@@ -6,6 +6,14 @@ I sometimes find myself trying to find a place, any place providing a specific s
 
 TripGo API allows us to compute routes from A to B, given a single mode of transport, or even multiple modes. So, we are going to build a sample app, let's call it 'FastGo', to compute the faster way to a specific kind of place. We will need the current location of the user, preferred mean of transport (for simplicity we will only allow one) and a set of possible places for each available kind. 
 
+<alternative Motivation section>
+The TripGo API can be used in several different ways: for example, it’s possible to create trips that are most cost efficient, show the quickest route or the most environmentally friendly. It also allows us to compute routes from A to B, given a single mode of transport or multiple modes.
+
+In this blog post I will demonstrate the ability to create the fastest trip from A to B. Say, you’d like to get from your location to the next ATM or petrol station or even McDonalds in the fastest way possible. 
+
+Let’s build a sample app and call it 'FastGo', to compute the quickest way to a specific place. We need the current location of the user, preferred means of transport (for simplicity we will only allow one) and a set of possible places.
+
+
 ## Goal
 
 The main goal is to show one way of using [TripGo API platform](https://skedgo.com/en/tripgo-api/), and having an example app will help us motivate and describe the usage of different services available in the platform. Since our platform has free tier, we built the complete example app using [react-native](https://facebook.github.io/react-native/) and share it in [GitHub](https://github.com/skedgo/fastgo-react-native) so you can sign up to get an API key and play with it yourself.
