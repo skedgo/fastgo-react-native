@@ -1,6 +1,6 @@
 # FastGo
 
-Sample app for demo the API platform and [Blog Post](https://skedgo.com/en/fastgo-tripgo-api-sample-app-using-react-native-part-1/) using [React-Native](REACT_NATIVE.md)
+Sample app for demo the API platform and [Blog Post](https://skedgo.com/en/fastgo-tripgo-api-sample-app-using-react-native-part-1/) using [React-Native](REACT-NATIVE.md)
 
 ## Usage
 
