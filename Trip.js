@@ -35,7 +35,7 @@ export default class Trip extends Component {
 	        .then((routingJSON) => {
 	          if (Object.keys(routingJSON).length === 0)
 	            return;
-	          let arrive = util.getFirstArrive(routingJSON, 0);
+	          let arrive = util.getBetterScore(routingJSON);
 	          this.draw({'routingJSON': routingJSON, 
           	          'arrive': arrive.arrive,
 			          'depart': arrive.depart,

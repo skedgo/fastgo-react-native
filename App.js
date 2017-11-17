@@ -25,8 +25,11 @@ export default class FastGo extends Component {
       selectedMode: 'pt_pub',
       selectedPlaces: 'mcdonalds',
       currentPosition: env.START_LOCATION,
-      modes: [],
-      baseURLs: [],
+      modes: [
+        {"mode": "pt_pub", "title": "Public Transport"}, 
+        {"mode": "me_car", "title": "Car"}, 
+        {"mode": "ps_tax", "title": "Taxi"}],
+      baseURL: "https://api.tripgo.com/v1/",
       placesOptions: [],
       places: [],
       trips: [],
@@ -53,20 +56,9 @@ export default class FastGo extends Component {
     } else {
       updateLocation(env.START_LOCATION)
     }
-
-    return api.getRegions()
-    .then((regionsJSON) => {
-      this.setState({
-        isLoading: false,
-        modes: api.getModes(regionsJSON, env.REGION_CODE),
-        baseURLs: api.getURLs(regionsJSON, env.REGION_CODE),
-      }, function() {
-        // do something with new state
-      });
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+    this.setState({isLoading: false});
+    console.log("start");    
+    return true;
   }
 
   update(places, placesOptions) {
@@ -107,7 +99,7 @@ export default class FastGo extends Component {
     
     let onGoPress = () => {
       this.setState({'showPlaceSelector': false,'showModeSelector': false, message: 'Computing Trips... '})
-      return api.computeFastestTrip(this.state.baseURLs,
+      return api.computeFastestTrip(this.state.baseURL,
                                 this.state.selectedMode, 
                                 this.state.places,
                                 this.state.currentPosition)

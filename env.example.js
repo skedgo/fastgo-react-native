@@ -3,7 +3,7 @@
 // copy this file as env.js and fill in with your own API KEYs and configuration values
 
 var Env = {
-	BASE_API_URL: "https://tripgo.skedgo.com/satapp/",
+	BASE_API_URL: "https://api.tripgo.com/v1/",
 	TRIPGO_API_KEY: "YOUR_TRIPGO_API_KEY",
 	GOOGLE_PLACES_API_KEY: "YOUR_GOOGLE_PLACES_API_KEY",
 

@@ -5,27 +5,12 @@ import Util from './Util.js'
 const util = new Util();
 
 export default class Api {
-	getRegions() {
-		return fetch(env.BASE_API_URL + 'regions.json', {
-			method: 'POST',
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-TripGo-Key': env.TRIPGO_API_KEY 
-			},
-			body: JSON.stringify({
-				v: '2',
-			})
-		})
-		.then((response) => response.json());
-	}
-
-	computeFastestTrip(baseURLs, selectedMode, selectedPlaces, currentPosition) {
+	computeFastestTrip(baseURL, selectedMode, selectedPlaces, currentPosition) {
 		let promises = [];
 		let result = [];
 		selectedPlaces.map((place, i) => {
 			promises.push(
-				this.computeTrip(baseURLs[0], selectedMode, currentPosition, place)
+				this.computeTrip(baseURL, selectedMode, currentPosition, place)
 				.then((routingJSON => {
 					if (routingJSON.hasOwnProperty('error')) {
 						util.log(routingJSON);
