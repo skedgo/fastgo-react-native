@@ -19,13 +19,11 @@ We are going to restrict our app to a single city, but it can easily be extended
 
 [diagram]: FastGoEndpointsSimpleDiagram.png "Endpoints Diagram"
 
-In this post, we will focus on the routing group. We will use the `regions` endpoint to get the server URLs and the available modes we need to use to compute our routes, the `routing` endpoint to compute the actual trips, and then, use the `trip update` URL to get real-time updates of our recently computed trip.
+In this post, we will focus on the routing group. We will use the `regions` endpoint to get the available modes we need to use to compute our routes, the `routing` endpoint to compute the actual trips, and then, use the `trip update` URL to get real-time updates of our recently computed trip.
 
 ## Let's begin
 
-As mentioned earlier, we first need to know to which server we can send our requests. This is because the TripGo API platform is composed by several servers around the globe, but not every server has every region. Also, if there’s an error connecting to one server, we can switch to the next available one. Note that this is the only time were we need a specific base url (https://tripgo.skedgo.com/satapp), all the remaining base URLs will be obtained from this first request.
-
-So, hitting `https://tripgo.skedgo.com/satapp/regions.json` will return the list of available regions and modes. We can search the JSON response for [city] and get the list of URLs, which will become our set of base URLs to use for the following requests. We can cache this response, but still need to refresh it regularly, as those URLs may change without notice, and new regions or modes might get added.
+As mentioned earlier, we first need to get the available modes. So, hitting `https://api.tripgo.com/v1/regions.json` will return the list of available regions and modes. We can search the JSON response for [city] and get the list of modes available. We can cache this response, but still need to refresh it regularly, as new regions or modes might get added.
 
 ### Request 
 
@@ -91,9 +89,11 @@ Note that we do a `POST` including the `X-TripGo-Key` in the header, and we send
 }
 ```
 
-The response is a JSON object with a hash code value, the list of available modes with their data and the list of regions. The hash code can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed, such as new regions or transport providers having been added. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes list), a name, the polygon that is covered by that region, a default time zone and the list of base URLs we can use for sending further requests.
+The response is a JSON object with a hash code value, the list of available modes with their data and the list of regions. The hash code can be used in future requests to inform that we already have a cached version and that we only want the response if anything has changed, such as new regions or transport providers having been added. Each region will have the list of main cities in it, the list of modes (just the keys of the values in the global modes list), a name, the polygon that is covered by that region, a default time zone and the list of base URLs with the servers including that region. 
 
-Having the base URLs for our city is the first step, then, we need to get the user's current location, the selected mode from the available ones and a set of places of a given kind (we will assume a fixed list of places, since this is out of our scope). Once we have all these, we are ready to move to the core of our application: Routing. 
+<!-- TripGo API platform is composed by several servers around the globe, but not every server has every region. Using `https://api.tripgo.com/` will handle this complexity by selecting the best server to resolve the request. Still, the user of the platform can use the list of base URLs for a given region to implements it's own failover scheme. -->
+
+Having the modes for our city is the first step, then, we need to get the selected mode from the available ones, the user's current location, and a set of places of a given kind (we will assume a fixed list of places, since this is out of our scope). Once we have all these, we are ready to move to the core of our application: Routing. 
 
 
 ## Routing
@@ -103,7 +103,7 @@ We need to find which of the possible places is the fastest for the user. We wil
 ### Request 
 
 ```js
-computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
+computeTrip(selectedMode, fromLoc, toLoc) {
   data = {
     fromLoc: `(${fromLoc.latitude},${fromLoc.longitude})`,
     toLoc: `(${toLoc.latitude},${toLoc.longitude})`,
@@ -112,7 +112,7 @@ computeTrip(baseUrl, selectedMode, fromLoc, toLoc) {
     v: 11,
     includeStops: true
   }
-  let url = baseUrl + '/routing.json'+ 
+  let url = env.BASE_API_URL + '/routing.json'+ 
   `?from=${data.fromLoc}&to=${data.toLoc}&modes=${data.mode}&wp=${data.wp}&v=${data.v}&includeStops=${data.includeStops}`
   return fetch(url, {
     method: 'GET',
@@ -154,11 +154,11 @@ In this case we do a GET request, also including the `X-TripGo-Key` in the heade
           "mainSegmentHashCode": -1301095336,
           "moneyCost": 4.15,
           "moneyUSDCost": 3.25,
-          "plannedURL": "<baseURL>/trip/planned/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
-          "progressURL": "<baseURL>/trip/progress/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "plannedURL": "<serverURL>/trip/planned/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "progressURL": "<serverURL>/trip/progress/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
           "queryIsLeaveAfter": true,
           "queryTime": 1495152642,
-          "saveURL": "<baseURL>/trip/save/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "saveURL": "<serverURL>/trip/save/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
           "segments": [
             {
               "availability": "AVAILABLE",
@@ -168,8 +168,8 @@ In this case we do a GET request, also including the `X-TripGo-Key` in the heade
               "startTime": 1495152642
             }
           ],
-          "temporaryURL": "<baseURL>/trip/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
-          "updateURL": "<baseURL>/trip/update/dd7ada5e-ddbd-4def-927c-880b2d60e57f?hash=-1553495163",
+          "temporaryURL": "<serverURL>/trip/dd7ada5e-ddbd-4def-927c-880b2d60e57f",
+          "updateURL": "<serverURL>/trip/update/dd7ada5e-ddbd-4def-927c-880b2d60e57f?hash=-1553495163",
           "weightedScore": 26.3
         },
         {"...": "..."}
